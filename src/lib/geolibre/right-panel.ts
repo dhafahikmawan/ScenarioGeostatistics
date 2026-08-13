@@ -27,9 +27,9 @@ function drawAnalysisMethodOption(method : string){
 }
 
 function drawAnalysisMethods(dropdown : HTMLElement){
-  dropdown.appendChild(drawAnalysisMethodOption("Raster Analysis"));
-  dropdown.appendChild(drawAnalysisMethodOption("Network Analysis"));
-  dropdown.appendChild(drawAnalysisMethodOption("Analisis Medan & Hidrologi"));
+  dropdown.appendChild(drawAnalysisMethodOption("Spatial Interpolation"));
+  dropdown.appendChild(drawAnalysisMethodOption("Suitability Modeling"));
+  dropdown.appendChild(drawAnalysisMethodOption("Predicting Climate Change Impacts"));
 }
 
 

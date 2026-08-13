@@ -69,8 +69,8 @@ function isPluginState(value: unknown): value is Partial<PluginState> {
 }
 
 export const plugin: GeoLibrePlugin<PluginControl> = {
-  id: "spatio-tha",
-  name: "Spatio Terrain and Hydrological Analysis",
+  id: "spatio-scenario-geostatistics",
+  name: "Spatio Scenario Modeling and Geostatistics",
   version: "0.1.0",
   urlParameterNames: [PLUGIN_DATA_PARAM],
   activate(app) {
