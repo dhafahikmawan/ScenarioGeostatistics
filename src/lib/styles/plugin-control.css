@@ -333,6 +333,213 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+
+/* Suitability Modeling workbench form */
+.geolibre-plugin-right-panel .suitability-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: inherit;
+}
+
+.suitability-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.suitability-form input:not([type="checkbox"]),
+.suitability-form select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 1px solid var(--pc-input-border);
+  border-radius: 4px;
+  color: var(--pc-input-text);
+  background: var(--pc-input-bg);
+  font: inherit;
+}
+
+.suitability-form input[type="file"] {
+  min-height: 34px;
+  padding: 5px;
+  font-size: 11px;
+}
+
+.suitability-form input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--pc-accent);
+}
+
+.suitability-form input[type="range"] {
+  min-height: 18px;
+  padding: 0;
+  border: 0;
+  accent-color: var(--pc-accent);
+  cursor: pointer;
+}
+
+.suitability-form input:focus,
+.suitability-form select:focus,
+.suitability-form button:focus {
+  outline: 2px solid var(--pc-accent-ring);
+  outline-offset: 1px;
+  border-color: var(--pc-accent);
+}
+
+.suitability-form > fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--pc-border);
+  border-radius: 4px;
+}
+
+.suitability-form legend {
+  padding: 0 5px;
+  color: var(--pc-label);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.suitability-form > div,
+.suitability-form fieldset > div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.suitability-form fieldset > div > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 82px;
+  gap: 8px;
+  align-items: end;
+}
+
+.suitability-form fieldset > div > div > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+  gap: 4px;
+}
+
+.suitability-form fieldset > div > div > div input {
+  min-width: 0;
+  min-height: 28px;
+  padding: 4px;
+  text-align: center;
+  font-size: 11px;
+}
+
+.suitability-form .suitability-raster-row {
+  grid-template-columns: minmax(0, 1fr) minmax(90px, 1fr) 34px;
+}
+
+.suitability-form .suitability-raster-row > output,
+.suitability-form > output {
+  color: var(--pc-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.suitability-form .suitability-ahp-table {
+  display: grid;
+  gap: 4px;
+  overflow-x: auto;
+}
+
+.suitability-form .suitability-ahp-row {
+  display: grid;
+  grid-template-columns: 58px repeat(var(--suitability-ahp-size, 1), minmax(48px, 1fr));
+  gap: 4px;
+  min-width: max-content;
+  align-items: center;
+}
+
+.suitability-form .suitability-ahp-row > span {
+  color: var(--pc-muted);
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.suitability-form .suitability-ahp-row > .suitability-ahp-corner {
+  min-height: 1px;
+}
+
+.suitability-form .suitability-ahp-input {
+  width: 48px;
+  min-height: 28px;
+  padding: 4px;
+  text-align: center;
+  font-size: 11px;
+}
+
+.suitability-form button {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid var(--pc-accent);
+  border-radius: 4px;
+  color: #fff;
+  background: var(--pc-accent);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.suitability-form button:hover {
+  border-color: var(--pc-accent-hover);
+  background: var(--pc-accent-hover);
+}
+
+.suitability-form button[type="submit"] {
+  min-height: 36px;
+  margin-top: 2px;
+}
+
+.suitability-form output {
+  min-height: 1.2em;
+  color: var(--pc-muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.suitability-form output:not(:empty) {
+  padding: 8px;
+  border-left: 3px solid var(--pc-accent);
+  background: var(--pc-hover-bg);
+}
+
+.suitability-form [hidden] {
+  display: none;
+}
+
+@media (max-width: 420px) {
+  .geolibre-plugin-right-panel {
+    padding: 10px;
+  }
+
+  .suitability-form fieldset > div > div {
+    grid-template-columns: minmax(0, 1fr) 72px;
+  }
+
+  .suitability-form .suitability-raster-row {
+    grid-template-columns: minmax(0, 1fr) 88px 30px;
+  }
+}
   padding: 12px;
   font-size: 13px;
   line-height: 1.5;
