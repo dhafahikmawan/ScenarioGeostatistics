@@ -6,6 +6,13 @@ import {
   type ComparisonMethod,
   type MceRasterInput,
 } from "../SpatioProcessing/suitability";
+import {
+  runRasterTemporalForecasting,
+  runTemporalForecasting,
+  type ArimaParams,
+  type RasterInputFile,
+} from "../SpatioProcessing/forecasting";
+import { getGeoTIFFBandCount } from "../utils/geotiff-processor";
 
 /**
  * Demonstration of the GeoLibre right-sidebar panel host API.
@@ -26,16 +33,19 @@ import {
 export const RIGHT_PANEL_ID = "geolibre-plugin-template-workbench";
 export const BASE_METHODS=[
   "",
+  "Spatial Interpolation",
   "Suitability Modeling",
   "Predicting Climate Change",
 ]
 export const BASE_METHODS_TC = [
   "Select Processing Function",
+  "Spatial Interpolation",
   "Suitability Modeling",
   "Predicting Climate Change",
 ]
 let _app : GeoLibreAppAPI;
-const developer = true;
+const DOWNLOAD_FUNCTIONS = true;
+const MAX_RASTER_UPLOADS = 4;
 
 
 function drawDropdownOptions(dropdown : HTMLElement, methods : string[], textContents? : string[]){
@@ -89,7 +99,10 @@ function downloadBlob(blob: Blob, filename: string): void {
 
 function loadMethodForm(wrapper: HTMLElement, method : string){
   removeAllChildElements(wrapper);
-  if(method === "Suitability Modeling"){
+  if(method === "Spatial Interpolation"){
+    
+  }
+  else if(method === "Suitability Modeling"){
     const form = document.createElement("form");
     form.className = "suitability-form";
     const source = document.createElement("select");
@@ -104,7 +117,7 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
 
     const mceSection = document.createElement("div");
     mceSection.hidden = true;
-    const rasterCount = rangeInput(2, 1, 12, 1);
+    const rasterCount = rangeInput(2, 1, MAX_RASTER_UPLOADS, 1);
     rasterCount.className = "suitability-range suitability-raster-count";
     const rasterCountValue = document.createElement("output");
     rasterCountValue.textContent = rasterCount.value;
@@ -116,7 +129,7 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
       rows.replaceChildren();
       weightInputs.length = 0;
       fileInputs.length = 0;
-      for (let index = 0; index < Math.max(1, Math.min(12, Number(rasterCount.value) || 1)); index += 1) {
+      for (let index = 0; index < Math.max(1, Math.min(MAX_RASTER_UPLOADS, Number(rasterCount.value) || 1)); index += 1) {
         const row = document.createElement("div");
         const file = document.createElement("input");
         file.type = "file";
@@ -148,7 +161,7 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
     const renderMatrix = () => {
       ahpTable.replaceChildren();
       matrixInputs.length = 0;
-      const count = Math.max(1, Math.min(12, Number(rasterCount.value) || 1));
+      const count = Math.max(1, Math.min(MAX_RASTER_UPLOADS, Number(rasterCount.value) || 1));
       const header = document.createElement("div");
       header.className = "suitability-ahp-row suitability-ahp-header";
       header.style.gridTemplateColumns = `58px repeat(${count}, minmax(48px, 1fr))`;
@@ -180,7 +193,7 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
       }
     };
     generateWeights.addEventListener("click", () => {
-      const count = Math.max(1, Math.min(12, Number(rasterCount.value) || 1));
+      const count = Math.max(1, Math.min(MAX_RASTER_UPLOADS, Number(rasterCount.value) || 1));
       const priorities = Array.from({ length: count }, (_, rowIndex) => {
         let product = 1;
         for (let columnIndex = 0; columnIndex < count; columnIndex += 1) product *= Number(matrixInputs[rowIndex * count + columnIndex].value) || 1;
@@ -248,7 +261,7 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
         _app.addGeoJsonLayer("Suitability regions", vectors);
         if (_app.registerExternalNativeLayer) _app.registerExternalNativeLayer({ id: "suitability-regions", name: "Suitability regions", geojson: vectors, nativeLayerIds: ["suitability-regions-fill"], sourceIds: ["suitability-regions-source"], opacity: 0.75, style: { fillColor: "#2f855a", strokeColor: "#14532d", strokeWidth: 1, fillOpacity: 0.45 } });
         downloads.replaceChildren();
-        if (developer) {
+        if (DOWNLOAD_FUNCTIONS) {
           const rasterDownload = document.createElement("button");
           rasterDownload.type = "button";
           rasterDownload.textContent = "Download raster";
@@ -263,7 +276,158 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
       } catch (error) { status.textContent = (error as Error).message; }
     });
   }else if(method === "Predicting Climate Change"){
-    
+    const form = document.createElement("form");
+    form.className = "suitability-form";
+
+    const typeSelect = document.createElement("select");
+    drawDropdownOptions(typeSelect, ["Vector Forecasting", "Raster Forecasting"]);
+    const vectorSection = document.createElement("div");
+    const vectorFile = document.createElement("input");
+    vectorFile.type = "file";
+    vectorFile.accept = ".geojson,.json,application/geo+json,application/json";
+    const locationSelect = document.createElement("select");
+    const timestampSelect = document.createElement("select");
+    const predictionSelect = document.createElement("select");
+    vectorSection.append(
+      fieldLabel("Upload Vector Data (GeoJSON)", vectorFile),
+      fieldLabel("Location ID Field", locationSelect),
+      fieldLabel("Timestamp Field", timestampSelect),
+      fieldLabel("Prediction Attribute", predictionSelect),
+    );
+    let geoJsonData: any = null;
+    vectorFile.addEventListener("change", async () => {
+      const file = vectorFile.files?.[0];
+      if (!file) return;
+      try {
+        geoJsonData = JSON.parse(await file.text());
+        const attributes = Object.keys(geoJsonData?.features?.[0]?.properties ?? {});
+        [locationSelect, timestampSelect, predictionSelect].forEach((select) => {
+          select.replaceChildren();
+          drawDropdownOptions(select, attributes);
+        });
+      } catch (error) {
+        geoJsonData = null;
+        status.textContent = `Error: ${(error as Error).message}`;
+      }
+    });
+
+    const rasterSection = document.createElement("div");
+    rasterSection.hidden = true;
+    const rasterWarning = document.createElement("p");
+    rasterWarning.textContent = "Raster forecasting runs a model for every pixel and may take considerable time.";
+    const rasterCount = numberInput(2, "1");
+    rasterCount.min = "2";
+    rasterCount.max = "20";
+    const rasterCards = document.createElement("div");
+    const rasterInputsState: Array<{ file: File | null; band: number; datetime: string }> = [];
+    const renderRasterCards = () => {
+      rasterCards.replaceChildren();
+      const count = Math.min(20, Math.max(2, Number(rasterCount.value) || 2));
+      rasterInputsState.length = count;
+      for (let index = 0; index < count; index += 1) {
+        const state = rasterInputsState[index] ?? {
+          file: null,
+          band: 0,
+          datetime: new Date(Date.now() - (count - index - 1) * 86400000).toISOString().slice(0, 16),
+        };
+        rasterInputsState[index] = state;
+        const card = document.createElement("div");
+        const fileInput = document.createElement("input");
+        fileInput.type = "file";
+        fileInput.accept = ".tif,.tiff,image/tiff";
+        const bandSelect = document.createElement("select");
+        const dateInput = document.createElement("input");
+        dateInput.type = "datetime-local";
+        dateInput.value = state.datetime;
+        card.append(document.createElement("strong"), fieldLabel("Choose File", fileInput), fieldLabel("Select Band", bandSelect), fieldLabel("Timestamp", dateInput));
+        (card.firstChild as HTMLElement).textContent = `Raster #${index + 1}`;
+        fileInput.addEventListener("change", async () => {
+          const file = fileInput.files?.[0];
+          if (!file) return;
+          state.file = file;
+          const bandCount = await getGeoTIFFBandCount(file);
+          bandSelect.replaceChildren();
+          drawDropdownOptions(bandSelect, Array.from({ length: bandCount }, (_, band) => `Band ${band + 1}`));
+          state.band = 0;
+        });
+        bandSelect.addEventListener("change", () => { state.band = bandSelect.selectedIndex; });
+        dateInput.addEventListener("input", () => { state.datetime = dateInput.value; });
+        rasterCards.appendChild(card);
+      }
+    };
+    rasterCount.addEventListener("input", renderRasterCards);
+    renderRasterCards();
+    rasterSection.append(rasterWarning, fieldLabel("Number of Rasters", rasterCount), rasterCards);
+
+    const stepsInput = numberInput(1, "1");
+    stepsInput.min = "1";
+    const methodSelect = document.createElement("select");
+    drawDropdownOptions(methodSelect, ["ARIMA", "Linear Extrapolation"]);
+    const arimaContainer = document.createElement("div");
+    const pInput = numberInput(1, "1");
+    const dInput = numberInput(1, "1");
+    const qInput = numberInput(0, "1");
+    arimaContainer.append(fieldLabel("p", pInput), fieldLabel("d", dInput), fieldLabel("q", qInput));
+    methodSelect.addEventListener("change", () => { arimaContainer.hidden = methodSelect.value !== "ARIMA"; });
+    const calculate = document.createElement("button");
+    calculate.type = "submit";
+    calculate.textContent = "Run Forecast";
+    const status = document.createElement("output");
+    const downloads = document.createElement("div");
+    form.append(fieldLabel("Forecasting Type", typeSelect), vectorSection, rasterSection, fieldLabel("Steps to Predict", stepsInput), fieldLabel("Prediction Method", methodSelect), arimaContainer, calculate, status, downloads);
+    wrapper.appendChild(form);
+    typeSelect.addEventListener("change", () => {
+      const vector = typeSelect.value === "Vector Forecasting";
+      vectorSection.hidden = !vector;
+      rasterSection.hidden = vector;
+    });
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      status.textContent = "";
+      downloads.replaceChildren();
+      const steps = Number(stepsInput.value);
+      const arimaParams: ArimaParams = { p: Number(pInput.value), d: Number(dInput.value), q: Number(qInput.value) };
+      try {
+        calculate.disabled = true;
+        calculate.textContent = "Calculating...";
+        if (typeSelect.value === "Vector Forecasting") {
+          if (!geoJsonData) throw new Error("Please upload a GeoJSON file first.");
+          if (steps > 10) throw new Error("Maximum steps for vector forecasting is 10.");
+          const result = runTemporalForecasting(geoJsonData, locationSelect.value, timestampSelect.value, predictionSelect.value, steps, methodSelect.value, arimaParams);
+          _app.addGeoJsonLayer(`${methodSelect.value} result`, result.geojson);
+          status.textContent = result.warning ? `Warning: ${result.warning}` : "Forecasting completed successfully!";
+          if (DOWNLOAD_FUNCTIONS) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = "Download GeoJSON";
+            button.addEventListener("click", () => downloadBlob(new Blob([JSON.stringify(result.geojson)], { type: "application/geo+json" }), "forecast.geojson"));
+            downloads.appendChild(button);
+          }
+        } else {
+          if (steps > 1) throw new Error("Maximum steps for raster forecasting is 1.");
+          const inputs = rasterInputsState.filter((input): input is RasterInputFile => input.file !== null);
+          if (inputs.length < 2) throw new Error("Please upload at least 2 raster files.");
+          const outputs = await runRasterTemporalForecasting(inputs, steps, methodSelect.value, arimaParams);
+          for (const output of outputs) {
+            const url = URL.createObjectURL(output.blob);
+            await _app.addCogLayer?.(`Prediction-(${output.date})`, url);
+            if (DOWNLOAD_FUNCTIONS) {
+              const button = document.createElement("button");
+              button.type = "button";
+              button.textContent = `Download ${output.name}`;
+              button.addEventListener("click", () => downloadBlob(output.blob, output.name));
+              downloads.appendChild(button);
+            }
+          }
+          status.textContent = outputs.some((output) => output.warning) ? `Completed with warning: ${outputs.find((output) => output.warning)?.warning}` : "Raster forecasting completed successfully!";
+        }
+      } catch (error) {
+        status.textContent = `Error: ${(error as Error).message}`;
+      } finally {
+        calculate.disabled = false;
+        calculate.textContent = "Run Forecast";
+      }
+    });
   }
 }
 
