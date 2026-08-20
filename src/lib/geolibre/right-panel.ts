@@ -18,6 +18,7 @@ import {
   interpolateKriging,
 } from "../SpatioProcessing/interpolation";
 import { getGeoTIFFBandCount, writeFloat32TiledGeoTIFF } from "../utils/geotiff-processor";
+import { applyRightPanelStyle } from "../styles/right-panel-styles";
 
 /**
  * Demonstration of the GeoLibre right-sidebar panel host API.
@@ -35,7 +36,7 @@ import { getGeoTIFFBandCount, writeFloat32TiledGeoTIFF } from "../utils/geotiff-
  */
 
 /** Stable id for this plugin's right panel. Replace with your own. */
-export const RIGHT_PANEL_ID = "geolibre-plugin-template-workbench";
+export const RIGHT_PANEL_ID = "spatio-scenario-geostatistics-panel";
 export const BASE_METHODS=[
   "",
   "Spatial Interpolation",
@@ -51,12 +52,35 @@ export const BASE_METHODS_TC = [
 let _app : GeoLibreAppAPI;
 const DOWNLOAD_FUNCTIONS = true;
 const MAX_RASTER_UPLOADS = 4;
+let _method : HTMLSelectElement;
+let _methodForm : HTMLElement;
+function styleElement<T extends HTMLElement>(element: T, styleName: string): T {
+  applyRightPanelStyle(element, styleName);
+  return element;
+}
+
+function styleControl(control: HTMLElement): void {
+  if (control instanceof HTMLInputElement) {
+    styleElement(control, control.type === "range" ? "right-panel-range" : control.type === "checkbox" ? "right-panel-checkbox" : control.type === "file" ? "right-panel-file" : "right-panel-control");
+  } else if (control instanceof HTMLSelectElement) {
+    styleElement(control, "right-panel-control");
+  } else if (control instanceof HTMLButtonElement) {
+    styleElement(control, "right-panel-button");
+  }
+}
+
+export function setMethod(process : string){
+  if(_method && _methodForm){
+    _method.value = process;
+    loadOptionForm(_methodForm, process);
+  }
+}
 
 
 function drawDropdownOptions(dropdown : HTMLElement, methods : string[], textContents? : string[]){
   methods.forEach((method, index) => {
-    const methodOption = document.createElement("option");
-    methodOption.className = "geoprocessing-method-option";
+    const methodOption = styleElement(document.createElement("option"), "right-panel-option");
+    applyRightPanelStyle(methodOption, "geoprocessing-method-option");
     methodOption.value = method;
     if(!textContents || index >= textContents.length){
       methodOption.textContent = method;
@@ -70,14 +94,15 @@ function drawDropdownOptions(dropdown : HTMLElement, methods : string[], textCon
 
 
 function fieldLabel(text: string, control: HTMLElement): HTMLLabelElement {
-  const label = document.createElement("label");
+  const label = styleElement(document.createElement("label"), "right-panel-label");
+  styleControl(control);
   label.textContent = text;
   label.appendChild(control);
   return label;
 }
 
 function numberInput(value: number, step = "any"): HTMLInputElement {
-  const input = document.createElement("input");
+  const input = styleElement(document.createElement("input"), "right-panel-control");
   input.type = "number";
   input.value = String(value);
   input.step = step;
@@ -85,7 +110,7 @@ function numberInput(value: number, step = "any"): HTMLInputElement {
 }
 
 function rangeInput(value: number, min: number, max: number, step: number): HTMLInputElement {
-  const input = document.createElement("input");
+  const input = styleElement(document.createElement("input"), "right-panel-range");
   input.type = "range";
   input.min = String(min);
   input.max = String(max);
@@ -102,54 +127,54 @@ function downloadBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(link.href);
 }
 
-function loadMethodForm(wrapper: HTMLElement, method : string){
+function loadOptionForm(wrapper: HTMLElement, method : string){
   removeAllChildElements(wrapper);
   if(method === "Spatial Interpolation"){
-    const form = document.createElement("form");
-    form.className = "interpolation-form";
+    const form = styleElement(document.createElement("form"), "right-panel-form");
+    form.classList.add("interpolation-form");
 
     // 1. GeoJSON File input field
-    const fileInput = document.createElement("input");
+    const fileInput = styleElement(document.createElement("input"), "right-panel-file");
     fileInput.type = "file";
     fileInput.accept = ".geojson,application/json";
     form.appendChild(fieldLabel("GeoJSON File", fileInput));
 
     // 2. Load Vector button (loads current GeoJSON onto map as vector layer)
-    const loadBtn = document.createElement("button");
+    const loadBtn = styleElement(document.createElement("button"), "right-panel-button");
     loadBtn.type = "button";
     loadBtn.textContent = "Load Vector";
     loadBtn.disabled = true;
     form.appendChild(loadBtn);
 
     // 3. Numeric Attribute dropdown selection
-    const attrSelect = document.createElement("select");
+    const attrSelect = styleElement(document.createElement("select"), "right-panel-control");
     const attrLabelContainer = fieldLabel("Numeric Attribute", attrSelect);
-    attrLabelContainer.style.display = "none";
+    attrLabelContainer.hidden = true;
     form.appendChild(attrLabelContainer);
 
     // 4. Method dropdown selection
-    const methodSelect = document.createElement("select");
+    const methodSelect = styleElement(document.createElement("select"), "right-panel-control");
     drawDropdownOptions(methodSelect, ["kriging"], ["Kriging"]);
     const methodLabelContainer = fieldLabel("Interpolation Method", methodSelect);
-    methodLabelContainer.style.display = "none";
+    methodLabelContainer.hidden = true;
     form.appendChild(methodLabelContainer);
 
     // 5. Submit/Run button
-    const calculate = document.createElement("button");
+    const calculate = styleElement(document.createElement("button"), "right-panel-button");
     calculate.type = "submit";
     calculate.textContent = "Interpolate";
     calculate.disabled = true;
-    calculate.style.display = "none";
+    calculate.hidden = true;
     form.appendChild(calculate);
 
     // 6. Status Output
-    const status = document.createElement("output");
-    status.className = "interpolation-status";
+    const status = styleElement(document.createElement("output"), "right-panel-status");
+    status.classList.add("interpolation-status");
     form.appendChild(status);
 
     // 7. Downloads Container
-    const downloads = document.createElement("div");
-    downloads.className = "interpolation-downloads";
+    const downloads = styleElement(document.createElement("div"), "right-panel-downloads");
+    downloads.classList.add("interpolation-downloads");
     form.appendChild(downloads);
 
     wrapper.appendChild(form);
@@ -162,7 +187,8 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
     // Helper: Update Status Text
     const setStatus = (msg: string, isError = false) => {
       status.textContent = msg;
-      status.style.color = isError ? "#e53e3e" : "";
+      status.classList.remove("right-panel-status", "right-panel-status-error");
+      applyRightPanelStyle(status, isError ? "right-panel-status-error" : "right-panel-status");
     };
 
     // Helper: Cleanup previous URL object
@@ -209,10 +235,10 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
         }
 
         attrSelect.disabled = numericKeys.length === 0;
-        attrLabelContainer.style.display = "";
-        methodLabelContainer.style.display = "";
+        attrLabelContainer.hidden = false;
+        methodLabelContainer.hidden = false;
         loadBtn.disabled = false;
-        calculate.style.display = "block";
+        calculate.hidden = false;
         calculate.disabled = true;
 
         setStatus(
@@ -302,7 +328,7 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
 
               // Optional: Render download controls if enabled by configuration
               if (DOWNLOAD_FUNCTIONS) {
-                const rasterDownload = document.createElement("button");
+                const rasterDownload = styleElement(document.createElement("button"), "right-panel-button");
                 rasterDownload.type = "button";
                 rasterDownload.textContent = "Download raster";
                 rasterDownload.addEventListener("click", () => downloadBlob(outputBlob, `${layerName}.tif`));
@@ -330,26 +356,26 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
     });
   }
   else if(method === "Suitability Modeling"){
-    const form = document.createElement("form");
-    form.className = "suitability-form";
-    const source = document.createElement("select");
+    const form = styleElement(document.createElement("form"), "right-panel-form");
+    form.classList.add("suitability-form");
+    const source = styleElement(document.createElement("select"), "right-panel-control");
     drawDropdownOptions(source, ["Upload Raster File", "Generate MCE Raster"]);
     form.appendChild(fieldLabel("Source", source));
 
-    const uploadSection = document.createElement("div");
-    const rasterInput = document.createElement("input");
+    const uploadSection = styleElement(document.createElement("div"), "right-panel-section");
+    const rasterInput = styleElement(document.createElement("input"), "right-panel-file");
     rasterInput.type = "file";
     rasterInput.accept = ".tif,.tiff,image/tiff";
     uploadSection.appendChild(fieldLabel("Raster", rasterInput));
 
-    const mceSection = document.createElement("div");
+    const mceSection = styleElement(document.createElement("div"), "right-panel-section");
     mceSection.hidden = true;
     const rasterCount = rangeInput(2, 1, MAX_RASTER_UPLOADS, 1);
-    rasterCount.className = "suitability-range suitability-raster-count";
-    const rasterCountValue = document.createElement("output");
+    rasterCount.classList.add("suitability-range", "suitability-raster-count");
+    const rasterCountValue = styleElement(document.createElement("output"), "right-panel-status");
     rasterCountValue.textContent = rasterCount.value;
     rasterCount.addEventListener("input", () => { rasterCountValue.textContent = rasterCount.value; });
-    const rows = document.createElement("div");
+    const rows = styleElement(document.createElement("div"), "right-panel-section");
     const weightInputs: HTMLInputElement[] = [];
     const fileInputs: HTMLInputElement[] = [];
     const renderRows = () => {
@@ -357,18 +383,18 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
       weightInputs.length = 0;
       fileInputs.length = 0;
       for (let index = 0; index < Math.max(1, Math.min(MAX_RASTER_UPLOADS, Number(rasterCount.value) || 1)); index += 1) {
-        const row = document.createElement("div");
-        const file = document.createElement("input");
+        const row = styleElement(document.createElement("div"), "right-panel-row");
+        const file = styleElement(document.createElement("input"), "right-panel-file");
         file.type = "file";
         file.accept = ".tif,.tiff,image/tiff";
         const weight = rangeInput(1 / Math.max(1, Number(rasterCount.value) || 1), 0, 1, 0.01);
-        weight.className = "suitability-range suitability-weight";
-        const weightValue = document.createElement("output");
+        weight.classList.add("suitability-range", "suitability-weight");
+        const weightValue = styleElement(document.createElement("output"), "right-panel-status");
         weightValue.textContent = Number(weight.value).toFixed(2);
         weight.addEventListener("input", () => { weightValue.textContent = Number(weight.value).toFixed(2); });
         fileInputs.push(file);
         weightInputs.push(weight);
-        row.className = "suitability-raster-row";
+        row.classList.add("suitability-raster-row");
         row.append(fieldLabel(`Raster ${index + 1}`, file), fieldLabel("Weight", weight), weightValue);
         rows.appendChild(row);
       }
@@ -376,12 +402,12 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
     rasterCount.addEventListener("input", renderRows);
     mceSection.append(fieldLabel("Raster count", rasterCount), rasterCountValue, rows);
 
-    const ahp = document.createElement("fieldset");
-    const ahpLegend = document.createElement("legend");
+    const ahp = styleElement(document.createElement("fieldset"), "right-panel-fieldset");
+    const ahpLegend = styleElement(document.createElement("legend"), "right-panel-legend");
     ahpLegend.textContent = "AHP weights";
-    const ahpTable = document.createElement("div");
-    ahpTable.className = "suitability-ahp-table";
-    const generateWeights = document.createElement("button");
+    const ahpTable = styleElement(document.createElement("div"), "right-panel-section");
+    ahpTable.classList.add("suitability-ahp-table");
+    const generateWeights = styleElement(document.createElement("button"), "right-panel-button");
     generateWeights.type = "button";
     generateWeights.textContent = "Generate weights";
     const matrixInputs: HTMLInputElement[] = [];
@@ -389,28 +415,28 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
       ahpTable.replaceChildren();
       matrixInputs.length = 0;
       const count = Math.max(1, Math.min(MAX_RASTER_UPLOADS, Number(rasterCount.value) || 1));
-      const header = document.createElement("div");
-      header.className = "suitability-ahp-row suitability-ahp-header";
+      const header = styleElement(document.createElement("div"), "right-panel-row");
+      header.classList.add("suitability-ahp-row", "suitability-ahp-header");
       header.style.gridTemplateColumns = `58px repeat(${count}, minmax(48px, 1fr))`;
-      const corner = document.createElement("span");
-      corner.className = "suitability-ahp-corner";
+      const corner = styleElement(document.createElement("span"), "right-panel-cell");
+      corner.classList.add("suitability-ahp-corner");
       header.appendChild(corner);
       for (let columnIndex = 0; columnIndex < count; columnIndex += 1) {
-        const label = document.createElement("span");
+        const label = styleElement(document.createElement("span"), "right-panel-cell");
         label.textContent = `Raster ${columnIndex + 1}`;
         header.appendChild(label);
       }
       ahpTable.appendChild(header);
       for (let rowIndex = 0; rowIndex < count; rowIndex += 1) {
-        const row = document.createElement("div");
-        row.className = "suitability-ahp-row";
+        const row = styleElement(document.createElement("div"), "right-panel-row");
+        row.classList.add("suitability-ahp-row");
         row.style.gridTemplateColumns = `58px repeat(${count}, minmax(48px, 1fr))`;
-        const label = document.createElement("span");
+        const label = styleElement(document.createElement("span"), "right-panel-cell");
         label.textContent = `Raster ${rowIndex + 1}`;
         row.appendChild(label);
         for (let columnIndex = 0; columnIndex < count; columnIndex += 1) {
-          const input = numberInput(rowIndex === columnIndex ? 1 : 1, "0.01");
-          input.className = "suitability-ahp-input";
+          const input = styleElement(numberInput(rowIndex === columnIndex ? 1 : 1, "0.01"), "right-panel-ahp-input");
+          input.classList.add("suitability-ahp-input");
           input.min = "0.01";
           input.disabled = rowIndex === columnIndex;
           matrixInputs.push(input);
@@ -435,38 +461,38 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
     renderRows();
     renderMatrix();
 
-    const suitability = document.createElement("fieldset");
-    const suitabilityLegend = document.createElement("legend");
+    const suitability = styleElement(document.createElement("fieldset"), "right-panel-fieldset");
+    const suitabilityLegend = styleElement(document.createElement("legend"), "right-panel-legend");
     suitabilityLegend.textContent = "Suitability criteria";
-    const comparison = document.createElement("select");
+    const comparison = styleElement(document.createElement("select"), "right-panel-control");
     drawDropdownOptions(comparison, ["<", "<=", "=", ">", ">=", "!=", "within"]);
     const comparisonValue = numberInput(0);
     const lowerInterval = numberInput(0);
     const upperInterval = numberInput(0);
-    const intervalFields = document.createElement("div");
+    const intervalFields = styleElement(document.createElement("div"), "right-panel-section");
     intervalFields.hidden = true;
     intervalFields.append(fieldLabel("Lower interval", lowerInterval), fieldLabel("Upper interval", upperInterval));
     comparison.addEventListener("change", () => { intervalFields.hidden = comparison.value !== "within"; });
-    const normalize = document.createElement("input");
+    const normalize = styleElement(document.createElement("input"), "right-panel-checkbox");
     normalize.type = "checkbox";
     normalize.checked = true;
-    const connectivity = document.createElement("select");
+    const connectivity = styleElement(document.createElement("select"), "right-panel-control");
     drawDropdownOptions(connectivity, ["4", "8"], ["4-way", "8-way"]);
-    const filterArea = document.createElement("input");
+    const filterArea = styleElement(document.createElement("input"), "right-panel-checkbox");
     filterArea.type = "checkbox";
     const minArea = numberInput(0);
     const maxArea = numberInput(0);
-    const areaFields = document.createElement("div");
+    const areaFields = styleElement(document.createElement("div"), "right-panel-section");
     areaFields.hidden = true;
     areaFields.append(fieldLabel("Minimum area", minArea), fieldLabel("Maximum area", maxArea));
     filterArea.addEventListener("change", () => { areaFields.hidden = !filterArea.checked; });
     suitability.append(suitabilityLegend, fieldLabel("Method", comparison), fieldLabel("Comparison value", comparisonValue), intervalFields, fieldLabel("Normalize result", normalize), fieldLabel("Connectivity", connectivity), fieldLabel("Filter by area", filterArea), areaFields);
 
-    const calculate = document.createElement("button");
+    const calculate = styleElement(document.createElement("button"), "right-panel-button");
     calculate.type = "submit";
     calculate.textContent = "Calculate Suitability";
-    const status = document.createElement("output");
-    const downloads = document.createElement("div");
+    const status = styleElement(document.createElement("output"), "right-panel-status");
+    const downloads = styleElement(document.createElement("div"), "right-panel-downloads");
     form.append(uploadSection, mceSection, suitability, calculate, status, downloads);
     wrapper.appendChild(form);
     source.addEventListener("change", () => { uploadSection.hidden = source.value !== "Upload Raster File"; mceSection.hidden = source.value !== "Generate MCE Raster"; });
@@ -489,11 +515,11 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
         if (_app.registerExternalNativeLayer) _app.registerExternalNativeLayer({ id: "suitability-regions", name: "Suitability regions", geojson: vectors, nativeLayerIds: ["suitability-regions-fill"], sourceIds: ["suitability-regions-source"], opacity: 0.75, style: { fillColor: "#2f855a", strokeColor: "#14532d", strokeWidth: 1, fillOpacity: 0.45 } });
         downloads.replaceChildren();
         if (DOWNLOAD_FUNCTIONS) {
-          const rasterDownload = document.createElement("button");
+          const rasterDownload = styleElement(document.createElement("button"), "right-panel-button");
           rasterDownload.type = "button";
           rasterDownload.textContent = "Download raster";
           rasterDownload.addEventListener("click", () => downloadBlob(output, "suitability.tif"));
-          const vectorDownload = document.createElement("button");
+          const vectorDownload = styleElement(document.createElement("button"), "right-panel-button");
           vectorDownload.type = "button";
           vectorDownload.textContent = "Download vectors";
           vectorDownload.addEventListener("click", () => downloadBlob(new Blob([JSON.stringify(vectors)], { type: "application/geo+json" }), "suitability.geojson"));
@@ -503,18 +529,18 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
       } catch (error) { status.textContent = (error as Error).message; }
     });
   }else if(method === "Predicting Climate Change"){
-    const form = document.createElement("form");
-    form.className = "suitability-form";
+    const form = styleElement(document.createElement("form"), "right-panel-form");
+    form.classList.add("suitability-form");
 
-    const typeSelect = document.createElement("select");
+    const typeSelect = styleElement(document.createElement("select"), "right-panel-control");
     drawDropdownOptions(typeSelect, ["Vector Forecasting", "Raster Forecasting"]);
-    const vectorSection = document.createElement("div");
-    const vectorFile = document.createElement("input");
+    const vectorSection = styleElement(document.createElement("div"), "right-panel-section");
+    const vectorFile = styleElement(document.createElement("input"), "right-panel-file");
     vectorFile.type = "file";
     vectorFile.accept = ".geojson,.json,application/geo+json,application/json";
-    const locationSelect = document.createElement("select");
-    const timestampSelect = document.createElement("select");
-    const predictionSelect = document.createElement("select");
+    const locationSelect = styleElement(document.createElement("select"), "right-panel-control");
+    const timestampSelect = styleElement(document.createElement("select"), "right-panel-control");
+    const predictionSelect = styleElement(document.createElement("select"), "right-panel-control");
     vectorSection.append(
       fieldLabel("Upload Vector Data (GeoJSON)", vectorFile),
       fieldLabel("Location ID Field", locationSelect),
@@ -538,14 +564,14 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
       }
     });
 
-    const rasterSection = document.createElement("div");
+    const rasterSection = styleElement(document.createElement("div"), "right-panel-section");
     rasterSection.hidden = true;
-    const rasterWarning = document.createElement("p");
+    const rasterWarning = styleElement(document.createElement("p"), "right-panel-text");
     rasterWarning.textContent = "Raster forecasting runs a model for every pixel and may take considerable time.";
     const rasterCount = numberInput(2, "1");
     rasterCount.min = "2";
     rasterCount.max = "20";
-    const rasterCards = document.createElement("div");
+    const rasterCards = styleElement(document.createElement("div"), "right-panel-section");
     const rasterInputsState: Array<{ file: File | null; band: number; datetime: string }> = [];
     const renderRasterCards = () => {
       rasterCards.replaceChildren();
@@ -558,15 +584,15 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
           datetime: new Date(Date.now() - (count - index - 1) * 86400000).toISOString().slice(0, 16),
         };
         rasterInputsState[index] = state;
-        const card = document.createElement("div");
-        const fileInput = document.createElement("input");
+        const card = styleElement(document.createElement("div"), "right-panel-row");
+        const fileInput = styleElement(document.createElement("input"), "right-panel-file");
         fileInput.type = "file";
         fileInput.accept = ".tif,.tiff,image/tiff";
-        const bandSelect = document.createElement("select");
-        const dateInput = document.createElement("input");
+        const bandSelect = styleElement(document.createElement("select"), "right-panel-control");
+        const dateInput = styleElement(document.createElement("input"), "right-panel-control");
         dateInput.type = "datetime-local";
         dateInput.value = state.datetime;
-        card.append(document.createElement("strong"), fieldLabel("Choose File", fileInput), fieldLabel("Select Band", bandSelect), fieldLabel("Timestamp", dateInput));
+        card.append(styleElement(document.createElement("strong"), "right-panel-text"), fieldLabel("Choose File", fileInput), fieldLabel("Select Band", bandSelect), fieldLabel("Timestamp", dateInput));
         (card.firstChild as HTMLElement).textContent = `Raster #${index + 1}`;
         fileInput.addEventListener("change", async () => {
           const file = fileInput.files?.[0];
@@ -588,19 +614,19 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
 
     const stepsInput = numberInput(1, "1");
     stepsInput.min = "1";
-    const methodSelect = document.createElement("select");
+    const methodSelect = styleElement(document.createElement("select"), "right-panel-control");
     drawDropdownOptions(methodSelect, ["ARIMA", "Linear Extrapolation"]);
-    const arimaContainer = document.createElement("div");
+    const arimaContainer = styleElement(document.createElement("div"), "right-panel-section");
     const pInput = numberInput(1, "1");
     const dInput = numberInput(1, "1");
     const qInput = numberInput(0, "1");
     arimaContainer.append(fieldLabel("p", pInput), fieldLabel("d", dInput), fieldLabel("q", qInput));
     methodSelect.addEventListener("change", () => { arimaContainer.hidden = methodSelect.value !== "ARIMA"; });
-    const calculate = document.createElement("button");
+    const calculate = styleElement(document.createElement("button"), "right-panel-button");
     calculate.type = "submit";
     calculate.textContent = "Run Forecast";
-    const status = document.createElement("output");
-    const downloads = document.createElement("div");
+    const status = styleElement(document.createElement("output"), "right-panel-status");
+    const downloads = styleElement(document.createElement("div"), "right-panel-downloads");
     form.append(fieldLabel("Forecasting Type", typeSelect), vectorSection, rasterSection, fieldLabel("Steps to Predict", stepsInput), fieldLabel("Prediction Method", methodSelect), arimaContainer, calculate, status, downloads);
     wrapper.appendChild(form);
     typeSelect.addEventListener("change", () => {
@@ -624,7 +650,7 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
           _app.addGeoJsonLayer(`${methodSelect.value} result`, result.geojson);
           status.textContent = result.warning ? `Warning: ${result.warning}` : "Forecasting completed successfully!";
           if (DOWNLOAD_FUNCTIONS) {
-            const button = document.createElement("button");
+            const button = styleElement(document.createElement("button"), "right-panel-button");
             button.type = "button";
             button.textContent = "Download GeoJSON";
             button.addEventListener("click", () => downloadBlob(new Blob([JSON.stringify(result.geojson)], { type: "application/geo+json" }), "forecast.geojson"));
@@ -639,7 +665,7 @@ function loadMethodForm(wrapper: HTMLElement, method : string){
             const url = URL.createObjectURL(output.blob);
             await _app.addCogLayer?.(`Prediction-(${output.date})`, url);
             if (DOWNLOAD_FUNCTIONS) {
-              const button = document.createElement("button");
+              const button = styleElement(document.createElement("button"), "right-panel-button");
               button.type = "button";
               button.textContent = `Download ${output.name}`;
               button.addEventListener("click", () => downloadBlob(output.blob, output.name));
@@ -688,23 +714,22 @@ export function registerTemplateRightPanel<TControl extends GeoLibreControl>(
     defaultWidth: 320,
     render(container) {
       //Wrapper
-      const wrap = document.createElement("div");
-      wrap.className = "geolibre-plugin-right-panel";
+      const wrap = styleElement(document.createElement("div"), "geolibre-plugin-right-panel");
 
       //Description
-      const heading = document.createElement("h2");
+      const heading = styleElement(document.createElement("h2"), "right-panel-heading");
       heading.textContent = "Plugin Workbench";
 
       //Method Select
-      const method = document.createElement("select");
-      method.className = "geoprocessing-method-select";
+      const method = styleElement(document.createElement("select"), "geoprocessing-method-select");
       drawDropdownOptions(method, BASE_METHODS, BASE_METHODS_TC);
+      _method = method;
 
       //Method Form Container
-      const methodFormContainer = document.createElement("div");
-      methodFormContainer.className = "geoprocessing-method-form-container";
+      const methodFormContainer = styleElement(document.createElement("div"), "geoprocessing-method-form-container");
+      _methodForm = methodFormContainer;
 
-      const body = document.createElement("p");
+      const body = styleElement(document.createElement("p"), "right-panel-description");
       body.textContent =
         "This panel is rendered by the plugin through app.registerRightPanel(). " +
         "Replace this content with your own workbench, query review, or " +
@@ -716,7 +741,7 @@ export function registerTemplateRightPanel<TControl extends GeoLibreControl>(
 
       //Event: Method selected
       method.addEventListener("change", () => {
-        loadMethodForm(methodFormContainer, method.value);
+        loadOptionForm(methodFormContainer, method.value);
       })
 
       // Optional cleanup, run when the panel closes or is unregistered.

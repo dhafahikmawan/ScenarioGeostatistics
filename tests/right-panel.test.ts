@@ -7,7 +7,12 @@ import type {
 import {
   RIGHT_PANEL_ID,
   registerTemplateRightPanel,
+  setMethod,
 } from "../src/lib/geolibre/right-panel";
+import {
+  RIGHT_PANEL_STYLES,
+  applyRightPanelStyle,
+} from "../src/lib/styles/right-panel-styles";
 
 /**
  * Minimal stub of the host API. Captures the right-panel registration so the
@@ -38,6 +43,48 @@ function createApp(withRightPanel = true) {
 }
 
 describe("registerTemplateRightPanel", () => {
+  it("exposes and applies the required registry styles", () => {
+    expect(RIGHT_PANEL_STYLES["right-panel-control"]?.border).toBe("1px solid #b8c1cc");
+    expect(RIGHT_PANEL_STYLES["right-panel-option"]?.backgroundColor).toBe("#ffffff");
+    expect(RIGHT_PANEL_STYLES["right-panel-option"]?.color).toBe("#000000");
+    expect(RIGHT_PANEL_STYLES["right-panel-button"]?.border).toBe("1px solid #1d4ed8");
+
+    const element = document.createElement("div");
+    applyRightPanelStyle(element, "right-panel-control");
+    expect(element.classList).toContain("right-panel-control");
+    expect(element.style.border).toContain("1px solid");
+    expect(element.style.border).toContain("184");
+    expect(() => applyRightPanelStyle(element, "missing-style")).toThrow("Unknown right-panel style");
+  });
+
+  it("keeps native controls styled across every processing form", () => {
+    const { app, getRegistered } = createApp();
+    registerTemplateRightPanel(app);
+    const panel = getRegistered();
+    const container = document.createElement("div");
+    panel?.render(container);
+
+    setMethod("Spatial Interpolation");
+    expect(container.querySelector("form.interpolation-form select")).toBeInstanceOf(HTMLSelectElement);
+    expect(container.querySelector('input[type="file"]')).toBeInstanceOf(HTMLInputElement);
+    expect(container.querySelector('button[type="submit"]')?.style.border).toContain("1px solid");
+
+    const options = Array.from(container.querySelectorAll("option"));
+    expect(options.length).toBeGreaterThan(0);
+    expect(options.every((option) => option.style.backgroundColor === "rgb(255, 255, 255)" || option.style.backgroundColor === "#ffffff")).toBe(true);
+    expect(options.every((option) => option.style.color === "rgb(0, 0, 0)" || option.style.color === "#000000")).toBe(true);
+
+    setMethod("Suitability Modeling");
+    expect(container.querySelector('input[type="range"]')).toBeInstanceOf(HTMLInputElement);
+    expect(container.querySelector('input[type="checkbox"]')).toBeInstanceOf(HTMLInputElement);
+    expect(container.querySelector("fieldset")).toBeInstanceOf(HTMLFieldSetElement);
+
+    setMethod("Predicting Climate Change");
+    expect(container.querySelector('input[type="number"]')).toBeInstanceOf(HTMLInputElement);
+    expect(container.querySelector('input[type="datetime-local"]')).toBeInstanceOf(HTMLInputElement);
+    expect(container.querySelector("output")?.classList).toContain("right-panel-status");
+  });
+
   it("registers and opens the panel, and renders into the container", () => {
     const { app, getRegistered } = createApp();
 
