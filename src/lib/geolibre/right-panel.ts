@@ -12,7 +12,12 @@ import {
   type ArimaParams,
   type RasterInputFile,
 } from "../SpatioProcessing/forecasting";
-import { getGeoTIFFBandCount } from "../utils/geotiff-processor";
+import {
+  extractPoints,
+  getNumericKeys,
+  interpolateKriging,
+} from "../SpatioProcessing/interpolation";
+import { getGeoTIFFBandCount, writeFloat32TiledGeoTIFF } from "../utils/geotiff-processor";
 
 /**
  * Demonstration of the GeoLibre right-sidebar panel host API.
@@ -100,7 +105,229 @@ function downloadBlob(blob: Blob, filename: string): void {
 function loadMethodForm(wrapper: HTMLElement, method : string){
   removeAllChildElements(wrapper);
   if(method === "Spatial Interpolation"){
-    
+    const form = document.createElement("form");
+    form.className = "interpolation-form";
+
+    // 1. GeoJSON File input field
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = ".geojson,application/json";
+    form.appendChild(fieldLabel("GeoJSON File", fileInput));
+
+    // 2. Load Vector button (loads current GeoJSON onto map as vector layer)
+    const loadBtn = document.createElement("button");
+    loadBtn.type = "button";
+    loadBtn.textContent = "Load Vector";
+    loadBtn.disabled = true;
+    form.appendChild(loadBtn);
+
+    // 3. Numeric Attribute dropdown selection
+    const attrSelect = document.createElement("select");
+    const attrLabelContainer = fieldLabel("Numeric Attribute", attrSelect);
+    attrLabelContainer.style.display = "none";
+    form.appendChild(attrLabelContainer);
+
+    // 4. Method dropdown selection
+    const methodSelect = document.createElement("select");
+    drawDropdownOptions(methodSelect, ["kriging"], ["Kriging"]);
+    const methodLabelContainer = fieldLabel("Interpolation Method", methodSelect);
+    methodLabelContainer.style.display = "none";
+    form.appendChild(methodLabelContainer);
+
+    // 5. Submit/Run button
+    const calculate = document.createElement("button");
+    calculate.type = "submit";
+    calculate.textContent = "Interpolate";
+    calculate.disabled = true;
+    calculate.style.display = "none";
+    form.appendChild(calculate);
+
+    // 6. Status Output
+    const status = document.createElement("output");
+    status.className = "interpolation-status";
+    form.appendChild(status);
+
+    // 7. Downloads Container
+    const downloads = document.createElement("div");
+    downloads.className = "interpolation-downloads";
+    form.appendChild(downloads);
+
+    wrapper.appendChild(form);
+
+    // Stateful variables
+    let geojson: any = null;
+    let fileName = "";
+    let resultUrl: string | null = null;
+
+    // Helper: Update Status Text
+    const setStatus = (msg: string, isError = false) => {
+      status.textContent = msg;
+      status.style.color = isError ? "#e53e3e" : "";
+    };
+
+    // Helper: Cleanup previous URL object
+    const cleanupUrl = () => {
+      if (resultUrl) {
+        URL.revokeObjectURL(resultUrl);
+        resultUrl = null;
+      }
+    };
+
+    // File selection handler
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+
+      fileName = file.name.replace(/\.geojson$/i, "");
+      setStatus("Reading file…");
+      cleanupUrl();
+      downloads.replaceChildren();
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          geojson = JSON.parse(reader.result as string);
+        } catch {
+          setStatus("Invalid GeoJSON file.", true);
+          return;
+        }
+
+        const numericKeys = getNumericKeys(geojson);
+        attrSelect.innerHTML = "";
+        
+        // Add default placeholder option
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "Select Attribute";
+        attrSelect.appendChild(placeholder);
+
+        for (const key of numericKeys) {
+          const opt = document.createElement("option");
+          opt.value = key;
+          opt.textContent = key;
+          attrSelect.appendChild(opt);
+        }
+
+        attrSelect.disabled = numericKeys.length === 0;
+        attrLabelContainer.style.display = "";
+        methodLabelContainer.style.display = "";
+        loadBtn.disabled = false;
+        calculate.style.display = "block";
+        calculate.disabled = true;
+
+        setStatus(
+          numericKeys.length === 0
+            ? "No numeric attributes found."
+            : `Loaded. ${numericKeys.length} numeric attribute(s) available.`
+        );
+      };
+      reader.onerror = () => setStatus("Failed to read file.", true);
+      reader.readAsText(file);
+    });
+
+    // Attribute selection listener to enable submit button
+    attrSelect.addEventListener("change", () => {
+      calculate.disabled = !attrSelect.value;
+    });
+
+    // Load Vector button listener
+    loadBtn.addEventListener("click", () => {
+      if (!geojson) return;
+      try {
+        _app.addGeoJsonLayer?.(fileName, geojson);
+        setStatus(`Vector layer "${fileName}" loaded on map.`);
+      } catch (e) {
+        setStatus(`Failed to load vector: ${String(e)}`, true);
+      }
+    });
+
+    // Form Submit listener - runs kriging and outputs tiled geotiff
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!geojson || !attrSelect.value) return;
+
+      const attribute = attrSelect.value;
+      const method = methodSelect.value;
+      
+      setStatus("Extracting points…");
+      calculate.disabled = true;
+      downloads.replaceChildren();
+
+      try {
+        const points = extractPoints(geojson, attribute);
+        if (points.length < 3) {
+          setStatus("Need at least 3 sample points to interpolate.", true);
+          calculate.disabled = false;
+          return;
+        }
+
+        interpolateKriging(
+          points,
+          (progress) => {
+            setStatus(progress.message, progress.isError);
+          },
+          async (result) => {
+            setStatus("Writing Tiled GeoTIFF…");
+            try {
+              // Convert bounds and grid to standard geotransform
+              const [minLng, minLat, maxLng, maxLat] = result.bounds;
+              const scaleX = (maxLng - minLng) / result.width;
+              const scaleY = -(maxLat - minLat) / result.height;
+              
+              // geotransform format: [originX, scaleX, 0, originY, 0, scaleY]
+              const geotransform: [number, number, number, number, number, number] = [
+                minLng,
+                scaleX,
+                0,
+                maxLat,
+                0,
+                scaleY,
+              ];
+
+              // Call geotiff-processor helper to create tiled GeoTIFF
+              const tiffBuffer = writeFloat32TiledGeoTIFF(
+                result.width,
+                result.height,
+                result.gridData,
+                geotransform,
+                4326, // EPSG:4326 coordinate system
+                1     // single-band
+              );
+
+              const outputBlob = new Blob([tiffBuffer], { type: "image/tiff" });
+              cleanupUrl();
+              resultUrl = URL.createObjectURL(outputBlob);
+
+              const layerName = `${fileName}-${method}`;
+
+              // Optional: Render download controls if enabled by configuration
+              if (DOWNLOAD_FUNCTIONS) {
+                const rasterDownload = document.createElement("button");
+                rasterDownload.type = "button";
+                rasterDownload.textContent = "Download raster";
+                rasterDownload.addEventListener("click", () => downloadBlob(outputBlob, `${layerName}.tif`));
+                downloads.appendChild(rasterDownload);
+              }
+
+              setStatus("Loading raster on map…");
+              await _app.addCogLayer?.(layerName, resultUrl);
+              setStatus(`Done! Raster "${layerName}" added to map.`);
+            } catch (err) {
+              setStatus(`TIFF processing error: ${String(err)}`, true);
+            } finally {
+              calculate.disabled = false;
+            }
+          },
+          (err) => {
+            setStatus(`Interpolation error: ${String(err)}`, true);
+            calculate.disabled = false;
+          }
+        );
+      } catch (err) {
+        setStatus(`Initialization error: ${String(err)}`, true);
+        calculate.disabled = false;
+      }
+    });
   }
   else if(method === "Suitability Modeling"){
     const form = document.createElement("form");
