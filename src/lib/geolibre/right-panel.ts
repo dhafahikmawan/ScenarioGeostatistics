@@ -435,14 +435,27 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
         label.textContent = `Raster ${rowIndex + 1}`;
         row.appendChild(label);
         for (let columnIndex = 0; columnIndex < count; columnIndex += 1) {
-          const input = styleElement(numberInput(rowIndex === columnIndex ? 1 : 1, "0.01"), "right-panel-ahp-input");
+          const isDiagonal = rowIndex === columnIndex;
+          const isLowerTriangle = rowIndex > columnIndex;
+          const input = styleElement(numberInput(isDiagonal ? 1 : 1.00, "0.01"), "right-panel-ahp-input");
           input.classList.add("suitability-ahp-input");
           input.min = "0.01";
-          input.disabled = rowIndex === columnIndex;
+          input.disabled = isDiagonal || isLowerTriangle;
           matrixInputs.push(input);
           row.appendChild(input);
         }
         ahpTable.appendChild(row);
+      }
+      for (let rowIndex = 0; rowIndex < count; rowIndex += 1) {
+        for (let columnIndex = rowIndex + 1; columnIndex < count; columnIndex += 1) {
+          const input = matrixInputs[rowIndex * count + columnIndex];
+          const reciprocalInput = matrixInputs[columnIndex * count + rowIndex];
+          input.addEventListener("input", () => {
+            const parsedValue = parseFloat(input.value);
+            const safeValue = Number.isNaN(parsedValue) || parsedValue <= 0 ? 1 : parsedValue;
+            reciprocalInput.value = (1 / safeValue).toFixed(2);
+          });
+        }
       }
     };
     generateWeights.addEventListener("click", () => {
@@ -453,7 +466,12 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
         return product ** (1 / count);
       });
       const total = priorities.reduce((sum, value) => sum + value, 0) || 1;
-      priorities.forEach((value, index) => { if (weightInputs[index]) weightInputs[index].value = String(value / total); });
+      priorities.forEach((value, index) => {
+        if (weightInputs[index]) {
+          weightInputs[index].value = String(value / total);
+          weightInputs[index].dispatchEvent(new Event("input"));
+        }
+      });
     });
     rasterCount.addEventListener("input", renderMatrix);
     ahp.append(ahpLegend, ahpTable, generateWeights);
