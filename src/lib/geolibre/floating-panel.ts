@@ -31,7 +31,7 @@ export function registerTemplateFloatingPanel<TControl extends GeoLibreControl>(
 
   return app.registerFloatingPanel({
     id: FLOATING_PANEL_ID,
-    title: "Floating Tools",
+    title: "SM & Geostatistics Tools",
     defaultWidth: 280,
     render(container) {
       const wrap = document.createElement("div");

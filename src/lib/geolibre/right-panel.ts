@@ -728,7 +728,7 @@ export function registerTemplateRightPanel<TControl extends GeoLibreControl>(
 
   const unregister = app.registerRightPanel({
     id: RIGHT_PANEL_ID,
-    title: "Workbench",
+    title: "SM & Geostatistics",
     defaultWidth: 320,
     render(container) {
       //Wrapper
@@ -736,7 +736,7 @@ export function registerTemplateRightPanel<TControl extends GeoLibreControl>(
 
       //Description
       const heading = styleElement(document.createElement("h2"), "right-panel-heading");
-      heading.textContent = "Plugin Workbench";
+      heading.textContent = "Suitability Modeling & Geostatistics Workbench";
 
       //Method Select
       const method = styleElement(document.createElement("select"), "geoprocessing-method-select");
@@ -748,12 +748,7 @@ export function registerTemplateRightPanel<TControl extends GeoLibreControl>(
       _methodForm = methodFormContainer;
 
       const body = styleElement(document.createElement("p"), "right-panel-description");
-      body.textContent =
-        "This panel is rendered by the plugin through app.registerRightPanel(). " +
-        "Replace this content with your own workbench, query review, or " +
-        "dashboard UI. Drive it with app.openRightPanel(), collapseRightPanel(), " +
-        "and closeRightPanel().";
-
+      
       wrap.append(heading, body, method, methodFormContainer);
       container.appendChild(wrap);
 
@@ -772,7 +767,7 @@ export function registerTemplateRightPanel<TControl extends GeoLibreControl>(
   // Open it right away so the example is visible on activation. Remove this call
   // (or gate it behind a button in your control) if you would rather open the
   // panel on demand instead of every time the plugin activates.
-  app.openRightPanel?.(RIGHT_PANEL_ID);
+  //app.openRightPanel?.(RIGHT_PANEL_ID);
 
   return () => {
     app.closeRightPanel?.(RIGHT_PANEL_ID);
