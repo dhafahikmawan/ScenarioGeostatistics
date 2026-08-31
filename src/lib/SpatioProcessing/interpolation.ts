@@ -1,5 +1,7 @@
 import kriging from "@sakitam-gis/kriging";
 
+export type KrigingModel = "gaussian" | "exponential" | "spherical";
+
 export interface SamplePoint {
   lng: number;
   lat: number;
@@ -69,6 +71,7 @@ export function extractPoints(geojson: any, attribute: string): SamplePoint[] {
  */
 export function interpolateKriging(
   points: SamplePoint[],
+  model: KrigingModel = "exponential",
   onProgress: (status: InterpolationProgressUpdate) => void,
   onComplete: (result: InterpolationResult) => void,
   onError: (err: any) => void
@@ -93,7 +96,7 @@ export function interpolateKriging(
     // Yield to let the progress message render
     setTimeout(() => {
       try {
-        const variogram = kriging.train(values, lngs, lats, "exponential", 0, 100);
+        const variogram = kriging.train(values, lngs, lats, model, 0, 100);
         onProgress({ message: "Predicting grid values (0%)…" });
 
         const gridData = new Float32Array(width * height);

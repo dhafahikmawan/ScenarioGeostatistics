@@ -4,6 +4,7 @@ import {
   readRasterFromFile,
   writeFloat32TiledGeoTIFF,
 } from '../utils/geotiff-processor';
+import { ensureWgs84GeoJson } from '../utils/crs-converter';
 
 export type ComparisonMethod = '<' | '<=' | '=' | '>' | '>=' | '!=' | 'within';
 
@@ -303,5 +304,7 @@ export async function buildSuitabilityVectorFromRasterBlob(
       if (!options.filterByArea || ((options.minArea === undefined || properties.area >= options.minArea) && (options.maxArea === undefined || properties.area <= options.maxArea))) features.push({ type: 'Feature', geometry, properties });
     }
   }
-  return { type: 'FeatureCollection', features };
+  const rawCollection: FeatureCollection<Polygon | MultiPolygon, SuitabilityVectorProperties> = { type: 'FeatureCollection', features };
+  const sourceCrs = raster.crsCode ? `EPSG:${raster.crsCode}` : undefined;
+  return ensureWgs84GeoJson(rawCollection, sourceCrs);
 }

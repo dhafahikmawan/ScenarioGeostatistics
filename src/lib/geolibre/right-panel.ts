@@ -16,7 +16,9 @@ import {
   extractPoints,
   getNumericKeys,
   interpolateKriging,
+  type KrigingModel,
 } from "../SpatioProcessing/interpolation";
+import { ensureWgs84GeoJson } from "../utils/crs-converter";
 import { getGeoTIFFBandCount, writeFloat32TiledGeoTIFF } from "../utils/geotiff-processor";
 import { applyRightPanelStyle } from "../styles/right-panel-styles";
 
@@ -159,6 +161,24 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
     methodLabelContainer.hidden = true;
     form.appendChild(methodLabelContainer);
 
+    const methodOptionsContainer = styleElement(document.createElement("div"), "geoprocessing-method-form-container");
+    form.appendChild(methodOptionsContainer);
+
+    let selectedKrigingModel: KrigingModel = "exponential";
+    const renderMethodOptions = () => {
+      methodOptionsContainer.replaceChildren();
+      if (methodSelect.value === "kriging") {
+        const modelSelect = styleElement(document.createElement("select"), "right-panel-control");
+        drawDropdownOptions(modelSelect, ["exponential", "gaussian", "spherical"], ["Exponential", "Gaussian", "Spherical"]);
+        modelSelect.value = selectedKrigingModel;
+        modelSelect.addEventListener("change", () => {
+          selectedKrigingModel = modelSelect.value as KrigingModel;
+        });
+        methodOptionsContainer.appendChild(fieldLabel("Kriging Model", modelSelect));
+      }
+    };
+    methodSelect.addEventListener("change", renderMethodOptions);
+
     // 5. Submit/Run button
     const calculate = styleElement(document.createElement("button"), "right-panel-button");
     calculate.type = "submit";
@@ -218,6 +238,7 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
           return;
         }
 
+        geojson = ensureWgs84GeoJson(geojson);
         const numericKeys = getNumericKeys(geojson);
         attrSelect.innerHTML = "";
         
@@ -237,6 +258,7 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
         attrSelect.disabled = numericKeys.length === 0;
         attrLabelContainer.hidden = false;
         methodLabelContainer.hidden = false;
+        renderMethodOptions();
         loadBtn.disabled = false;
         calculate.hidden = false;
         calculate.disabled = true;
@@ -260,7 +282,8 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
     loadBtn.addEventListener("click", () => {
       if (!geojson) return;
       try {
-        _app.addGeoJsonLayer?.(fileName, geojson);
+        const normalizedGeoJson = ensureWgs84GeoJson(geojson);
+        _app.addGeoJsonLayer?.(fileName, normalizedGeoJson);
         setStatus(`Vector layer "${fileName}" loaded on map.`);
       } catch (e) {
         setStatus(`Failed to load vector: ${String(e)}`, true);
@@ -289,6 +312,7 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
 
         interpolateKriging(
           points,
+          selectedKrigingModel,
           (progress) => {
             setStatus(progress.message, progress.isError);
           },
@@ -529,7 +553,8 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
         const url = URL.createObjectURL(output);
         await _app.addCogLayer?.("Suitability raster", url, { bands: "1", nodata: NaN, colormap: "viridis" });
         const vectors = await buildSuitabilityVectorFromRasterBlob(output, { connectivity: Number(connectivity.value) as 4 | 8, filterByArea: filterArea.checked, minArea: Number(minArea.value), maxArea: Number(maxArea.value) });
-        _app.addGeoJsonLayer("Suitability regions", vectors);
+        const normalizedVectors = ensureWgs84GeoJson(vectors, `EPSG:4326`);
+        _app.addGeoJsonLayer("Suitability regions", normalizedVectors);
         if (_app.registerExternalNativeLayer) _app.registerExternalNativeLayer({ id: "suitability-regions", name: "Suitability regions", geojson: vectors, nativeLayerIds: ["suitability-regions-fill"], sourceIds: ["suitability-regions-source"], opacity: 0.75, style: { fillColor: "#2f855a", strokeColor: "#14532d", strokeWidth: 1, fillOpacity: 0.45 } });
         downloads.replaceChildren();
         if (DOWNLOAD_FUNCTIONS) {
@@ -665,7 +690,8 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
           if (!geoJsonData) throw new Error("Please upload a GeoJSON file first.");
           if (steps > 10) throw new Error("Maximum steps for vector forecasting is 10.");
           const result = runTemporalForecasting(geoJsonData, locationSelect.value, timestampSelect.value, predictionSelect.value, steps, methodSelect.value, arimaParams);
-          _app.addGeoJsonLayer(`${methodSelect.value} result`, result.geojson);
+          const normalizedForecast = ensureWgs84GeoJson(result.geojson);
+          _app.addGeoJsonLayer(`${methodSelect.value} result`, normalizedForecast);
           status.textContent = result.warning ? `Warning: ${result.warning}` : "Forecasting completed successfully!";
           if (DOWNLOAD_FUNCTIONS) {
             const button = styleElement(document.createElement("button"), "right-panel-button");
@@ -764,10 +790,7 @@ export function registerTemplateRightPanel<TControl extends GeoLibreControl>(
     },
   });
 
-  // Open it right away so the example is visible on activation. Remove this call
-  // (or gate it behind a button in your control) if you would rather open the
-  // panel on demand instead of every time the plugin activates.
-  //app.openRightPanel?.(RIGHT_PANEL_ID);
+  app.openRightPanel?.(RIGHT_PANEL_ID);
 
   return () => {
     app.closeRightPanel?.(RIGHT_PANEL_ID);

@@ -5,6 +5,7 @@ import {
   generateId,
   classNames,
 } from '../src/lib/utils/helpers';
+import { ensureWgs84GeoJson } from '../src/lib/utils/crs-converter';
 
 describe('clamp', () => {
   it('returns value when within range', () => {
@@ -86,5 +87,27 @@ describe('classNames', () => {
 
   it('handles all classes active', () => {
     expect(classNames({ a: true, b: true, c: true })).toBe('a b c');
+  });
+});
+
+describe('ensureWgs84GeoJson', () => {
+  it('reprojects projected GeoJSON coordinates to WGS 84 with CRS metadata', () => {
+    const geojson = {
+      type: 'FeatureCollection',
+      crs: { type: 'name', properties: { name: 'EPSG:3857' } },
+      features: [{
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [0, 0],
+        },
+        properties: { id: 1 },
+      }],
+    };
+
+    const projected = ensureWgs84GeoJson(geojson);
+    expect(projected.crs.properties.name).toBe('urn:ogc:def:crs:OGC:1.3:CRS84');
+    expect(projected.features[0].geometry.coordinates[0]).toBeCloseTo(0, 6);
+    expect(projected.features[0].geometry.coordinates[1]).toBeCloseTo(0, 6);
   });
 });
