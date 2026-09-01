@@ -44,12 +44,14 @@ export const BASE_METHODS=[
   "Spatial Interpolation",
   "Suitability Modeling",
   "Predicting Climate Change",
+  // {lang:id} Prediksi Dampak Perubahan Iklim
 ]
 export const BASE_METHODS_TC = [
   "Select Processing Function",
   "Spatial Interpolation",
   "Suitability Modeling",
   "Predicting Climate Change",
+  // {lang:id} Prediksi Dampak Perubahan Iklim
 ]
 let _app : GeoLibreAppAPI;
 const DOWNLOAD_FUNCTIONS = true;
@@ -145,6 +147,8 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
     const loadBtn = styleElement(document.createElement("button"), "right-panel-button");
     loadBtn.type = "button";
     loadBtn.textContent = "Load Vector";
+    // {lang:id} Muat Vektor
+
     loadBtn.disabled = true;
     form.appendChild(loadBtn);
 
@@ -183,6 +187,8 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
     const calculate = styleElement(document.createElement("button"), "right-panel-button");
     calculate.type = "submit";
     calculate.textContent = "Interpolate";
+    // {lang:id} Interpolasi
+
     calculate.disabled = true;
     calculate.hidden = true;
     form.appendChild(calculate);
@@ -246,6 +252,8 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
         const placeholder = document.createElement("option");
         placeholder.value = "";
         placeholder.textContent = "Select Attribute";
+        // {lang:id} Pilih Properti
+
         attrSelect.appendChild(placeholder);
 
         for (const key of numericKeys) {
@@ -384,6 +392,7 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
     form.classList.add("suitability-form");
     const source = styleElement(document.createElement("select"), "right-panel-control");
     drawDropdownOptions(source, ["Upload Raster File", "Generate MCE Raster"]);
+    // {lang:id} ["Unggah File Raster", "Buat Raster MCE"]
     form.appendChild(fieldLabel("Source", source));
 
     const uploadSection = styleElement(document.createElement("div"), "right-panel-section");
@@ -429,11 +438,15 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
     const ahp = styleElement(document.createElement("fieldset"), "right-panel-fieldset");
     const ahpLegend = styleElement(document.createElement("legend"), "right-panel-legend");
     ahpLegend.textContent = "AHP weights";
+    // {lang:id} Bobot AHP
+
     const ahpTable = styleElement(document.createElement("div"), "right-panel-section");
     ahpTable.classList.add("suitability-ahp-table");
     const generateWeights = styleElement(document.createElement("button"), "right-panel-button");
     generateWeights.type = "button";
     generateWeights.textContent = "Generate weights";
+    // {lang:id} Buat bobot
+
     const matrixInputs: HTMLInputElement[] = [];
     const renderMatrix = () => {
       ahpTable.replaceChildren();
@@ -506,6 +519,8 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
     const suitability = styleElement(document.createElement("fieldset"), "right-panel-fieldset");
     const suitabilityLegend = styleElement(document.createElement("legend"), "right-panel-legend");
     suitabilityLegend.textContent = "Suitability criteria";
+    // {lang:id} Kriteria Kesesuaian
+
     const comparison = styleElement(document.createElement("select"), "right-panel-control");
     drawDropdownOptions(comparison, ["<", "<=", "=", ">", ">=", "!=", "within"]);
     const comparisonValue = numberInput(0);
@@ -533,6 +548,8 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
     const calculate = styleElement(document.createElement("button"), "right-panel-button");
     calculate.type = "submit";
     calculate.textContent = "Calculate Suitability";
+    // {lang:id} Hitung kesesuaian
+
     const status = styleElement(document.createElement("output"), "right-panel-status");
     const downloads = styleElement(document.createElement("div"), "right-panel-downloads");
     form.append(uploadSection, mceSection, suitability, calculate, status, downloads);
@@ -565,6 +582,8 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
           const vectorDownload = styleElement(document.createElement("button"), "right-panel-button");
           vectorDownload.type = "button";
           vectorDownload.textContent = "Download vectors";
+          // {lang:id} Download Vektor
+
           vectorDownload.addEventListener("click", () => downloadBlob(new Blob([JSON.stringify(vectors)], { type: "application/geo+json" }), "suitability.geojson"));
           downloads.append(rasterDownload, vectorDownload);
         }
@@ -577,6 +596,7 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
 
     const typeSelect = styleElement(document.createElement("select"), "right-panel-control");
     drawDropdownOptions(typeSelect, ["Vector Forecasting", "Raster Forecasting"]);
+    // {lang:id} ["Peramalan Vektor", "Peramalan Raster"]
     const vectorSection = styleElement(document.createElement("div"), "right-panel-section");
     const vectorFile = styleElement(document.createElement("input"), "right-panel-file");
     vectorFile.type = "file";
@@ -611,6 +631,7 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
     rasterSection.hidden = true;
     const rasterWarning = styleElement(document.createElement("p"), "right-panel-text");
     rasterWarning.textContent = "Raster forecasting runs a model for every pixel and may take considerable time.";
+    // {lang:id} Peramalan raster menjalankan model untuk setiap piksel dan dapat memakan waktu yang cukup lama
     const rasterCount = numberInput(2, "1");
     rasterCount.min = "2";
     rasterCount.max = "20";
@@ -659,6 +680,7 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
     stepsInput.min = "1";
     const methodSelect = styleElement(document.createElement("select"), "right-panel-control");
     drawDropdownOptions(methodSelect, ["ARIMA", "Linear Extrapolation"]);
+    // {lang:id} Ekstrapolasi Linear
     const arimaContainer = styleElement(document.createElement("div"), "right-panel-section");
     const pInput = numberInput(1, "1");
     const dInput = numberInput(1, "1");
@@ -668,6 +690,7 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
     const calculate = styleElement(document.createElement("button"), "right-panel-button");
     calculate.type = "submit";
     calculate.textContent = "Run Forecast";
+    // {lang:id} Jalankan Peramalan
     const status = styleElement(document.createElement("output"), "right-panel-status");
     const downloads = styleElement(document.createElement("div"), "right-panel-downloads");
     form.append(fieldLabel("Forecasting Type", typeSelect), vectorSection, rasterSection, fieldLabel("Steps to Predict", stepsInput), fieldLabel("Prediction Method", methodSelect), arimaContainer, calculate, status, downloads);
@@ -686,6 +709,7 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
       try {
         calculate.disabled = true;
         calculate.textContent = "Calculating...";
+        // {lang:id} Menghitung...
         if (typeSelect.value === "Vector Forecasting") {
           if (!geoJsonData) throw new Error("Please upload a GeoJSON file first.");
           if (steps > 10) throw new Error("Maximum steps for vector forecasting is 10.");
@@ -723,6 +747,7 @@ function loadOptionForm(wrapper: HTMLElement, method : string){
       } finally {
         calculate.disabled = false;
         calculate.textContent = "Run Forecast";
+        // {lang:id} Jalankan Peramalan
       }
     });
   }
@@ -763,6 +788,7 @@ export function registerTemplateRightPanel<TControl extends GeoLibreControl>(
       //Description
       const heading = styleElement(document.createElement("h2"), "right-panel-heading");
       heading.textContent = "Suitability Modeling & Geostatistics Workbench";
+      // {lang:id} Panel Suitability Modeling dan Geostatistics
 
       //Method Select
       const method = styleElement(document.createElement("select"), "geoprocessing-method-select");

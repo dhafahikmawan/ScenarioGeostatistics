@@ -48,21 +48,19 @@ export function registerTemplateToolbarMenu<TControl extends GeoLibreControl>(
       {
         id: "open-right",
         label: "Open SM & Geostatistics workbench panel",
+        // {lang:id} Buka panel SM & Geostatistics
+
         // Disable the item on hosts that lack the capability, so it is not a
         // clickable no-op (demonstrates the `disabled` flag + capability check).
         disabled: !app.openRightPanel,
         onSelect: () => app.openRightPanel?.(RIGHT_PANEL_ID),
       },
       {
-        id: "open-floating",
-        label: "Open SM & Geostatistics floating panel",
-        disabled: !app.openFloatingPanel,
-        onSelect: () => app.openFloatingPanel?.(FLOATING_PANEL_ID),
-      },
-      {
         type: "submenu",
         id: "tools",
         label: "Tools",
+        // {lang:id} Alat-alat
+
         items: methods,
       },
       { type: "separator" },
