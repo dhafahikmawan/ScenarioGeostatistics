@@ -15,7 +15,7 @@ import { RIGHT_PANEL_ID, BASE_METHODS, setMethod } from "./right-panel";
  */
 
 /** Stable id for this plugin's toolbar menu. Replace with your own. */
-export const TOOLBAR_MENU_ID = "spatio-scenario-geostatistics-panel-menu";
+export const TOOLBAR_MENU_ID = "spazio-scenario-geostatistics-panel-menu";
 
 /**
  * Register the template's top toolbar menu.

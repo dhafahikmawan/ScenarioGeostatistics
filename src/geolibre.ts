@@ -68,9 +68,9 @@ function isPluginState(value: unknown): value is Partial<PluginState> {
   return true;
 }
 
-export const spatioScenarioGeostatistics: GeoLibrePlugin<PluginControl> = {
-  id: "spatio-scenario-geostatistics",
-  name: "Spatio Scenario Modeling and Geostatistics",
+export const spazioScenarioGeostatistics: GeoLibrePlugin<PluginControl> = {
+  id: "spazio-scenario-geostatistics",
+  name: "Spazio Scenario Modeling and Geostatistics",
   version: "0.1.0",
   urlParameterNames: [PLUGIN_DATA_PARAM],
   activate(app) {
@@ -131,4 +131,4 @@ export const spatioScenarioGeostatistics: GeoLibrePlugin<PluginControl> = {
   },
 };
 
-export default spatioScenarioGeostatistics;
+export default spazioScenarioGeostatistics;

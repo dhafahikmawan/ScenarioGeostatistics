@@ -15,7 +15,7 @@ import type { GeoLibreAppAPI, GeoLibreControl } from "./host-api";
  */
 
 /** Stable id for this plugin's floating panel. Replace with your own. */
-export const FLOATING_PANEL_ID = "spatio-scenario-geostatistics-panel-tools";
+export const FLOATING_PANEL_ID = "spazio-scenario-geostatistics-panel-tools";
 
 /**
  * Register the template's floating panel.

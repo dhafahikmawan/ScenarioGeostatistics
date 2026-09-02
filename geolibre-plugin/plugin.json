@@ -1,6 +1,6 @@
 {
-  "id": "spatio-scenario-geostatistics",
-  "name": "Spatio Scenario Modeling and Geostatistics",
+  "id": "spazio-scenario-geostatistics",
+  "name": "Spazio Scenario Modeling and Geostatistics",
   "version": "0.1.0",
   "entry": "dist/index.js",
   "description": "A starter GeoLibre plugin bundle with a MapLibre control.",

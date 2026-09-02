@@ -41,7 +41,7 @@ import {
  */
 
 /** Stable id for this plugin's right panel. Replace with your own. */
-export const RIGHT_PANEL_ID = "spatio-scenario-geostatistics-panel";
+export const RIGHT_PANEL_ID = "spazio-scenario-geostatistics-panel";
 /** Developer variable configuring target decimal places for MCE weight calculations. Default is 5. */
 export const DECIMAL_PLACES_ROUNDING = 5;
 
