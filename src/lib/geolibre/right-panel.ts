@@ -5,19 +5,19 @@ import {
   buildSuitabilityVectorFromRasterBlob,
   type ComparisonMethod,
   type MceRasterInput,
-} from "../SpatioProcessing/suitability";
+} from "../SpazioProcessing/suitability";
 import {
   runRasterTemporalForecasting,
   runTemporalForecasting,
   type ArimaParams,
   type RasterInputFile,
-} from "../SpatioProcessing/forecasting";
+} from "../SpazioProcessing/forecasting";
 import {
   extractPoints,
   getNumericKeys,
   interpolateKriging,
   type KrigingModel,
-} from "../SpatioProcessing/interpolation";
+} from "../SpazioProcessing/interpolation";
 import { ensureWgs84GeoJson } from "../utils/crs-converter";
 import { getGeoTIFFBandCount, writeFloat32TiledGeoTIFF } from "../utils/geotiff-processor";
 import {
