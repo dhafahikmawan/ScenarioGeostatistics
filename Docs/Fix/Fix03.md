@@ -1,5 +1,26 @@
-### Fix List 03
-
-1. In Forecasting and Suitability, for each raster upload form, add a `NoData` input field, which the user can input a number to treat as NoData. Optional, default unset. Adjust the calculations to take this into account
-2. In Forecasting and Suitability, Add another field in the form after the raster uploads, which is going to be a dropdown in which the user can select which raster to be used as the bounding box. The default is the raster uploaded in the first field. This dropdown resets everytime the number of rasters or the uploaded rasters are changed.
-3. Currently, the AHP interface in the Suitability Modeling isn't very intuitive in showing which field can or can't be edited. Maybe grey out the uneditable fields.
+1. Update how the plugin is styled, and how the styling is indexed. There is already an existing style registry in `src/lib/styles/spazio-right-panel-styles.ts`. We are going to use that style registry instead, with these class name general rules:
+    - For the dropdowns, `spazio-dropdown`.
+    - For the dropdown options, `spazio-dropdown-options`.
+    - For the calculator expression fields (if any), `spazio-expression-field`.
+    - For the calculator buttons (if any), `spazio-calculator-button`.
+    - For the input text/numeric fields, `spazio-text-field`.
+    - For the input file fields, `spazio-file-field`.
+    - For checkboxes (if any), `spazio-checkbox`.
+    - For the sliders (if any), `spazio-slider`.
+    - For the labels of the fields, dropdowns, checkboxes, sliders (basically input fields), `spazio-input-label`.
+    - Input field descriptions (if any): `spazio-input-description`.
+    - For AHP table (if any), `spazio-ahp-table`.
+    - For AHP table fields (if any), `spazio-ahp-field`.
+    - For AHP table Raster Indexes (e.g, Raster 1, Raster 2, ... (basically row 1 and col 1)) (if any), `spazio-ahp-headers`.
+    - For status fields, `spazio-status`.
+    - For the main container, `spazio-container`.
+    - For the submit/processing buttons, `spazio-submit-button`.
+    - For other buttons, `spazio-button`.
+    - For the title of the plugin (`heading` variable in right panel), `spazio-title`.
+    - For the description of the plugin (`body` variable in right panel, currently empty), `spazio-description`.
+    - For anything else, check if there is already a suitable class in the registry. If not, create a new class in the registry and port the old styles, make sure that the class name if prefixed with `spazio-` properly.
+Update the plugin with these consideration in mind:
+- The old registry in `src/lib/styles/right-panel-styles.ts` might be deleted after this process is over. Make sure there is no dependency to the file.
+- If there is a style clash between the old registry and the new registry, prioritize using the new registry's styles
+- `src/lib/geolibre/right-panel.ts` SHOULD NOT have a raw classname string declaration, it should be handled using the corresponding methods in the registry (applyRightPanelStyle ,...). 
+- Do not delete/change any style/alias in the registry this registry will later serve as a master registry in the spazio workspace

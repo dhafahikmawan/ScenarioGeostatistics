@@ -3,6 +3,8 @@ import { fromBlob } from 'geotiff';
 /**
  * Represents the metadata and pixel data extracted from a GeoTIFF file.
  */
+export type ClipNoDataTreatment = '0' | 'NaN';
+
 export interface RasterSource {
   width: number;
   height: number;
@@ -84,6 +86,71 @@ export async function readRasterFromFile(file: File): Promise<RasterSource> {
   } catch (error) {
     throw new Error(`Failed to read raster from file: ${(error as Error).message}`);
   }
+}
+
+/**
+ * Resamples a source raster onto the spatial grid of a target raster.
+ * Pixels outside the source extent or marked as NoData are written as NaN.
+ */
+export function alignRasterToGrid(
+  source: RasterSource,
+  target: RasterSource,
+  options: {
+    bandIndex?: number;
+    customNoData?: number;
+    clipNoDataTreatment?: ClipNoDataTreatment;
+  } = {},
+): Float32Array {
+  if (source.crsCode !== target.crsCode) {
+    throw new Error(`CRS mismatch: Source CRS (${source.crsCode}) does not match target CRS (${target.crsCode}).`);
+  }
+
+  const bandIndex = options.bandIndex ?? 0;
+  const customNoData = options.customNoData;
+  const clipNoDataTreatment = options.clipNoDataTreatment ?? 'NaN';
+  const clipFillValue = clipNoDataTreatment === '0' ? 0 : NaN;
+  const isNoData = (value: number) =>
+    !Number.isFinite(value) ||
+    (customNoData !== undefined && value === customNoData) ||
+    (source.noDataValue !== undefined && value === source.noDataValue);
+
+  const sameGrid =
+    source.width === target.width &&
+    source.height === target.height &&
+    source.geotransform.every((value, index) => Math.abs(value - target.geotransform[index]) < 1e-6);
+
+  const result = new Float32Array(target.width * target.height);
+  if (sameGrid) {
+    for (let index = 0; index < result.length; index += 1) {
+      const value = source.data[index * source.bandCount + bandIndex];
+      result[index] = isNoData(value) ? NaN : value;
+    }
+    return result;
+  }
+
+  const [targetOriginX, targetScaleX, , targetOriginY, , targetScaleY] = target.geotransform;
+  const [sourceOriginX, sourceScaleX, , sourceOriginY, , sourceScaleY] = source.geotransform;
+
+  for (let targetY = 0; targetY < target.height; targetY += 1) {
+    const worldY = targetOriginY + (targetY + 0.5) * targetScaleY;
+    const sourceY = Math.floor((worldY - sourceOriginY) / sourceScaleY);
+
+    for (let targetX = 0; targetX < target.width; targetX += 1) {
+      const targetIndex = targetY * target.width + targetX;
+      const worldX = targetOriginX + (targetX + 0.5) * targetScaleX;
+      const sourceX = Math.floor((worldX - sourceOriginX) / sourceScaleX);
+
+      if (sourceX < 0 || sourceX >= source.width || sourceY < 0 || sourceY >= source.height) {
+        result[targetIndex] = clipFillValue;
+        continue;
+      }
+
+      const value = source.data[(sourceY * source.width + sourceX) * source.bandCount + bandIndex];
+      result[targetIndex] = isNoData(value) ? NaN : value;
+    }
+  }
+
+  return result;
 }
 
 /**

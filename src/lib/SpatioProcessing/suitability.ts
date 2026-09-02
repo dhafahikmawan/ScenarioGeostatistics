@@ -1,6 +1,7 @@
 import { area, multiPolygon, polygon } from '@turf/turf';
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson';
 import {
+  alignRasterToGrid,
   readRasterFromFile,
   writeFloat32TiledGeoTIFF,
 } from '../utils/geotiff-processor';
@@ -21,11 +22,14 @@ export type MceBandMode = 'all' | 'average' | 'first';
 export interface MceRasterProcessingOptions {
   bandMode?: MceBandMode;
   mode?: 'before' | 'after';
+  boundingRasterIndex?: number;
+  clipNoDataTreatment?: '0' | 'NaN';
 }
 
 export interface MceRasterInput {
   file: File;
   weight: number;
+  noData?: number;
 }
 
 export interface BuildSuitabilityVectorOptions {
@@ -85,68 +89,96 @@ export async function buildMceRaster(
   options: MceRasterProcessingOptions = {},
 ): Promise<Blob | null> {
   if (inputs.length === 0) return null;
+
   const bandMode = options.bandMode ?? 'first';
   const averageTiming = options.mode ?? 'before';
+  const clipNoDataTreatment = options.clipNoDataTreatment ?? 'NaN';
   const rasters = await Promise.all(inputs.map(({ file }) => readRasterFromFile(file)));
-  const base = rasters[0];
+  const base = rasters[options.boundingRasterIndex ?? 0] ?? rasters[0];
   const layers: Float32Array[] = [];
   let outputBandCount = bandMode === 'all' ? base.bandCount : 1;
 
-  for (const raster of rasters) {
-    if (raster.width !== base.width || raster.height !== base.height || raster.bandCount !== base.bandCount) {
-      throw new Error('Raster dimensions and band counts must match.');
+  for (let layerIndex = 0; layerIndex < rasters.length; layerIndex += 1) {
+    const raster = rasters[layerIndex];
+    const input = inputs[layerIndex];
+    if (raster.crsCode !== base.crsCode) {
+      throw new Error(`CRS mismatch between raster #${layerIndex + 1} and bounding raster.`);
     }
-    const pixels = raster.width * raster.height;
+
     if (bandMode === 'all') {
-      const values = new Float32Array(raster.data.length);
-      for (let index = 0; index < values.length; index += 1) {
-        values[index] = raster.data[index] === raster.noDataValue || !Number.isFinite(raster.data[index]) ? NaN : raster.data[index];
+      const values = new Float32Array(base.width * base.height * base.bandCount);
+      for (let bandIndex = 0; bandIndex < base.bandCount; bandIndex += 1) {
+        const aligned = alignRasterToGrid(raster, base, {
+          bandIndex,
+          customNoData: input?.noData,
+          clipNoDataTreatment,
+        });
+        for (let pixelIndex = 0; pixelIndex < aligned.length; pixelIndex += 1) {
+          values[pixelIndex * base.bandCount + bandIndex] = aligned[pixelIndex];
+        }
       }
       layers.push(normalizeValues(values));
     } else if (bandMode === 'first') {
-      const values = new Float32Array(pixels);
-      for (let index = 0; index < pixels; index += 1) {
-        const value = raster.data[index * raster.bandCount];
-        values[index] = value === raster.noDataValue || !Number.isFinite(value) ? NaN : value;
-      }
+      const values = alignRasterToGrid(raster, base, {
+        bandIndex: 0,
+        customNoData: input?.noData,
+        clipNoDataTreatment,
+      });
       layers.push(normalizeValues(values));
     } else if (averageTiming === 'before') {
-      const values = new Float32Array(pixels);
-      for (let index = 0; index < pixels; index += 1) {
+      const values = new Float32Array(base.width * base.height);
+      for (let pixelIndex = 0; pixelIndex < base.width * base.height; pixelIndex += 1) {
         let sum = 0;
         let count = 0;
         for (let band = 0; band < raster.bandCount; band += 1) {
-          const value = raster.data[index * raster.bandCount + band];
-          if (value !== raster.noDataValue && Number.isFinite(value)) { sum += value; count += 1; }
+          const aligned = alignRasterToGrid(raster, base, {
+            bandIndex: band,
+            customNoData: input?.noData,
+            clipNoDataTreatment,
+          });
+          const value = aligned[pixelIndex];
+          if (Number.isFinite(value)) {
+            sum += value;
+            count += 1;
+          }
         }
-        values[index] = count ? sum / count : NaN;
+        values[pixelIndex] = count ? sum / count : NaN;
       }
       layers.push(normalizeValues(values));
     } else {
       const normalizedBands = Array.from({ length: raster.bandCount }, (_, band) => {
-        const values = new Float32Array(pixels);
-        for (let index = 0; index < pixels; index += 1) {
-          const value = raster.data[index * raster.bandCount + band];
-          values[index] = value === raster.noDataValue || !Number.isFinite(value) ? NaN : value;
-        }
-        return normalizeValues(values);
+        const aligned = alignRasterToGrid(raster, base, {
+          bandIndex: band,
+          customNoData: input?.noData,
+          clipNoDataTreatment,
+        });
+        return normalizeValues(aligned);
       });
-      const values = new Float32Array(pixels);
-      for (let index = 0; index < pixels; index += 1) {
-        const valid = normalizedBands.map((band) => band[index]).filter(Number.isFinite);
-        values[index] = valid.length ? valid.reduce((sum, value) => sum + value, 0) / valid.length : NaN;
+      const values = new Float32Array(base.width * base.height);
+      for (let pixelIndex = 0; pixelIndex < values.length; pixelIndex += 1) {
+        const valid = normalizedBands.map((band) => band[pixelIndex]).filter(Number.isFinite);
+        values[pixelIndex] = valid.length ? valid.reduce((sum, value) => sum + value, 0) / valid.length : NaN;
       }
       layers.push(values);
     }
   }
 
   const output = new Float32Array(layers[0].length);
-  for (let layerIndex = 0; layerIndex < layers.length; layerIndex += 1) {
-    const weight = Number(inputs[layerIndex].weight);
-    if (!Number.isFinite(weight)) throw new Error('MCE weights must be finite.');
-    for (let index = 0; index < output.length; index += 1) {
-      output[index] += (Number.isFinite(layers[layerIndex][index]) ? layers[layerIndex][index] : 0) * weight;
+  for (let index = 0; index < output.length; index += 1) {
+    const validLayers = layers.filter((layer) => Number.isFinite(layer[index]));
+    if (validLayers.length === 0) {
+      output[index] = NaN;
+      continue;
     }
+
+    let total = 0;
+    for (let layerIndex = 0; layerIndex < layers.length; layerIndex += 1) {
+      const weight = Number(inputs[layerIndex].weight);
+      if (!Number.isFinite(weight)) throw new Error('MCE weights must be finite.');
+      const value = layers[layerIndex][index];
+      total += (Number.isFinite(value) ? value : 0) * weight;
+    }
+    output[index] = total;
   }
 
   const buffer = writeFloat32TiledGeoTIFF(base.width, base.height, output, base.geotransform, base.crsCode, outputBandCount);

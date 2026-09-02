@@ -1,5 +1,6 @@
 import ARIMA from 'arima';
 import {
+  alignRasterToGrid,
   readRasterFromFile,
   writeFloat32TiledGeoTIFF,
 } from '../utils/geotiff-processor';
@@ -121,6 +122,7 @@ export interface RasterInputFile {
   file: File;
   band: number;
   datetime: string;
+  noData?: number;
 }
 
 export async function runRasterTemporalForecasting(
@@ -128,6 +130,8 @@ export async function runRasterTemporalForecasting(
   steps: number,
   method: string,
   arimaParams: ArimaParams,
+  boundingRasterIndex = 0,
+  clipNoDataTreatment: '0' | 'NaN' = 'NaN',
 ): Promise<Array<{ name: string; blob: Blob; date: string; warning: string }>> {
   if (inputs.length === 0) throw new Error('At least one raster is required.');
 
@@ -137,26 +141,47 @@ export async function runRasterTemporalForecasting(
       ...(await readRasterFromFile(input.file)),
       bandIndex: input.band,
       time: new Date(input.datetime).getTime(),
+      noData: input.noData,
     })));
-  const base = parsedRasters[0];
+  const base = parsedRasters[boundingRasterIndex] ?? parsedRasters[0];
   if (base.bandIndex < 0 || base.bandIndex >= base.bandCount) {
-    throw new Error(`Invalid band ${base.bandIndex + 1} for raster #1.`);
+    throw new Error(`Invalid band ${base.bandIndex + 1} for raster #${boundingRasterIndex + 1}.`);
   }
-  for (let index = 1; index < parsedRasters.length; index += 1) {
+
+  for (let index = 0; index < parsedRasters.length; index += 1) {
     const raster = parsedRasters[index];
-    if (raster.width !== base.width || raster.height !== base.height) {
-      throw new Error(`Dimension mismatch: Raster #${index + 1} is ${raster.width}x${raster.height}, expected ${base.width}x${base.height}`);
+    if (raster.crsCode !== base.crsCode) {
+      throw new Error(`CRS mismatch: Raster #${index + 1} CRS (${raster.crsCode}) does not match the bounding raster CRS (${base.crsCode}).`);
     }
     if (raster.bandIndex < 0 || raster.bandIndex >= raster.bandCount) {
       throw new Error(`Invalid band ${raster.bandIndex + 1} for raster #${index + 1}.`);
     }
   }
 
+  const alignedRasters = parsedRasters.map((raster) => ({
+    ...raster,
+    alignedData: alignRasterToGrid(raster, base, {
+      bandIndex: raster.bandIndex,
+      customNoData: raster.noData,
+      clipNoDataTreatment,
+    }),
+  }));
+
   const pixelCount = base.width * base.height;
   const predictions = Array.from({ length: steps }, () => new Float32Array(pixelCount));
   let warning = '';
   for (let pixelIndex = 0; pixelIndex < pixelCount; pixelIndex += 1) {
-    const series = parsedRasters.map((raster) => raster.data[pixelIndex * raster.bandCount + raster.bandIndex] ?? 0);
+    const series = alignedRasters
+      .map((raster) => raster.alignedData[pixelIndex])
+      .filter(Number.isFinite);
+
+    if (!series.length) {
+      for (let step = 0; step < steps; step += 1) {
+        predictions[step][pixelIndex] = NaN;
+      }
+      continue;
+    }
+
     const forecast = method === 'Linear Extrapolation'
       ? ArimaSolver.linearExtrapolation(series, steps)
       : ArimaSolver.forecast(series, arimaParams, steps);

@@ -1,0 +1,121 @@
+﻿node.exe : npm notice run geolibre-plugin-template@0.1.0 npx
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\erwin\AppData\Roaming\ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm notice run ...plate@0.1.0 npx:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+npm notice run vitest run --no-color
+
+ RUN  v4.1.8 C:/Users/erwin/OneDrive/Documents/Learning/Plugin Spatio/ScenarioModelingandGeostatistics
+
+ Γ¥» Docs/Samples/Interpolate/tests/right-panel.test.ts (3 tests | 1 failed) 12ms
+     ├ù registers and opens the panel, and renders into the container 7ms
+ Γ¥» Docs/Samples/SuitabilityModeling/tests/right-panel.test.ts (6 tests | 2 failed) 1627ms
+     ├ù renders one row per selected raster count and calculates an MCE raster 556ms
+     ├ù keeps the newly created blob URL alive for GeoLibre to load 420ms
+ Γ¥» tests/right-panel.test.ts (5 tests | 1 failed) 1794ms
+     ├ù registers and opens the panel, and renders into the container 95ms
+ Γ¥» tests/ui-surfaces.test.ts (4 tests | 1 failed) 26ms
+     ├ù registers a menu whose items open the plugin's panels 6ms
+ Γ¥» Docs/Samples/AttributeForecast/tests/right-panel.test.ts (3 tests | 1 failed) 61ms
+     ├ù registers and opens the panel, and renders into the container 26ms
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 6 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  tests/right-panel.test.ts > registerTemplateRightPanel > registers and opens the panel, and renders into the 
+container
+AssertionError: expected 'Suitability Modeling & Geostatistics ΓÇª' to be 'Plugin Workbench' // Object.is equality
+
+Expected: "Plugin Workbench"
+Received: "Suitability Modeling & Geostatistics Workbench"
+
+ Γ¥» tests/right-panel.test.ts:100:56
+     98|     const container = document.createElement("div");
+     99|     const cleanup = panel?.render(container);
+    100|     expect(container.querySelector("h2")?.textContent).toBe("Plugin WoΓÇª
+       |                                                        ^
+    101|
+    102|     // The returned cleanup removes the plugin's own DOM.
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/6]ΓÄ»
+
+ FAIL  tests/ui-surfaces.test.ts > registerTemplateToolbarMenu > registers a menu whose items open the plugin's panels
+TypeError: Cannot read properties of undefined (reading 'onSelect')
+ Γ¥» tests/ui-surfaces.test.ts:95:48
+     93|     expect(app.openRightPanel).toHaveBeenCalledWith(RIGHT_PANEL_ID);
+     94|
+     95|     (openFloating as { onSelect: () => void }).onSelect();
+       |                                                ^
+     96|     expect(app.openFloatingPanel).toHaveBeenCalledWith(FLOATING_PANEL_ΓÇª
+     97|
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[2/6]ΓÄ»
+
+ FAIL  Docs/Samples/AttributeForecast/tests/right-panel.test.ts > registerTemplateRightPanel > registers and opens the 
+panel, and renders into the container
+AssertionError: expected "vi.fn()" to be called with arguments: [ 'geolibre-forecasting-panel' ]
+
+Number of calls: 0
+
+ Γ¥» Docs/Samples/AttributeForecast/tests/right-panel.test.ts:49:32
+     47|     const panel = getRegistered();
+     48|     expect(panel?.id).toBe(RIGHT_PANEL_ID);
+     49|     expect(app.openRightPanel).toHaveBeenCalledWith(RIGHT_PANEL_ID);
+       |                                ^
+     50|
+     51|     const container = document.createElement("div");
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[3/6]ΓÄ»
+
+ FAIL  Docs/Samples/SuitabilityModeling/tests/right-panel.test.ts > registerTemplateRightPanel > renders one row per 
+selected raster count and calculates an MCE raster
+AssertionError: expected "vi.fn()" to be called with arguments: [ [ ObjectContaining{ΓÇª}, ΓÇª(1) ], ΓÇª(1) ]
+
+Number of calls: 0
+
+ Γ¥» Docs/Samples/SuitabilityModeling/tests/right-panel.test.ts:143:28
+    141|     await Promise.resolve();
+    142|
+    143|     expect(buildMceRaster).toHaveBeenCalledWith([
+       |                            ^
+    144|       expect.objectContaining({ file: firstFile, weight: 0.5 }),
+    145|       expect.objectContaining({ file: secondFile, weight: 1.0 }),
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[4/6]ΓÄ»
+
+ FAIL  Docs/Samples/SuitabilityModeling/tests/right-panel.test.ts > registerTemplateRightPanel > keeps the newly 
+created blob URL alive for GeoLibre to load
+AssertionError: expected "vi.fn()" to be called at least once
+ Γ¥» Docs/Samples/SuitabilityModeling/tests/right-panel.test.ts:211:25
+    209|
+    210|     expect(revokeObjectURL).not.toHaveBeenCalledWith("blob:mce-raster"ΓÇª
+    211|     expect(addCogLayer).toHaveBeenCalled();
+       |                         ^
+    212|   });
+    213|
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[5/6]ΓÄ»
+
+ FAIL  Docs/Samples/Interpolate/tests/right-panel.test.ts > registerTemplateRightPanel > registers and opens the 
+panel, and renders into the container
+AssertionError: expected "vi.fn()" to be called with arguments: [ Array(1) ]
+
+Number of calls: 0
+
+ Γ¥» Docs/Samples/Interpolate/tests/right-panel.test.ts:49:32
+     47|     const panel = getRegistered();
+     48|     expect(panel?.id).toBe(RIGHT_PANEL_ID);
+     49|     expect(app.openRightPanel).toHaveBeenCalledWith(RIGHT_PANEL_ID);
+       |                                ^
+     50|
+     51|     const container = document.createElement("div");
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[6/6]ΓÄ»
+
+
+ Test Files  5 failed | 13 passed (18)
+      Tests  6 failed | 129 passed (135)
+   Start at  08:18:44
+   Duration  28.46s (transform 1.23s, setup 7.27s, import 7.19s, tests 3.71s, environment 45.86s)
+
