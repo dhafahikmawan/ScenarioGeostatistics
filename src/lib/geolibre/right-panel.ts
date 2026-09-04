@@ -20,10 +20,7 @@ import {
 } from "../SpazioProcessing/interpolation";
 import { ensureWgs84GeoJson } from "../utils/crs-converter";
 import { getGeoTIFFBandCount, writeFloat32TiledGeoTIFF } from "../utils/geotiff-processor";
-import {
-  applyRightPanelStyle,
-  type RightPanelStyleName,
-} from "../styles/spazio-right-panel-styles";
+import { applyRightPanelStyle, getRightPanelTheme, setRightPanelTheme, styleRightPanelTree, RightPanelStyleName } from "../styles/spazio-right-panel-styles";
 
 /**
  * Demonstration of the GeoLibre right-sidebar panel host API.
@@ -921,13 +918,46 @@ export function registerTemplateRightPanel<TControl extends GeoLibreControl>(
     title: "SM & Geostatistics",
     defaultWidth: 320,
     render(container) {
+      // Ensure container enables 100% height filling
+      container.style.height = "100%";
+      container.style.boxSizing = "border-box";
+
       // Wrapper
       const wrap = styleElement(document.createElement("div"), "panel");
+      // Header bar with heading + theme toggle
+      const headerContainer = document.createElement("div");
+      headerContainer.style.display = "flex";
+      headerContainer.style.alignItems = "center";
+      headerContainer.style.justifyContent = "space-between";
+      headerContainer.style.width = "100%";
 
       // Heading
       const heading = styleElement(document.createElement("h2"), "heading");
       heading.textContent = "Suitability Modeling & Geostatistics Workbench";
       // {lang:id} Panel Suitability Modeling dan Geostatistics
+
+      // Theme toggle button
+      const themeToggle = document.createElement("button");
+      applyRightPanelStyle(themeToggle, "button");
+      themeToggle.type = "button";
+      themeToggle.style.minHeight = "28px";
+      themeToggle.style.padding = "4px 8px";
+      themeToggle.style.fontSize = "12px";
+      themeToggle.style.display = "inline-flex";
+      themeToggle.style.alignItems = "center";
+      themeToggle.style.gap = "4px";
+      themeToggle.textContent = getRightPanelTheme() === "dark" ? "☀️ Light" : "🌙 Dark";
+      themeToggle.setAttribute("aria-label", "Toggle dark/light mode");
+
+      themeToggle.addEventListener("click", () => {
+        const nextTheme = getRightPanelTheme() === "light" ? "dark" : "light";
+        setRightPanelTheme(nextTheme);
+        themeToggle.textContent = nextTheme === "dark" ? "☀️ Light" : "🌙 Dark";
+        styleRightPanelTree(wrap, nextTheme);
+        applyRightPanelStyle(themeToggle, "button", nextTheme);
+      });
+
+      headerContainer.append(heading, themeToggle);
 
       // Description
       const body = styleElement(document.createElement("p"), "description");
@@ -941,7 +971,7 @@ export function registerTemplateRightPanel<TControl extends GeoLibreControl>(
       const methodFormContainer = styleElement(document.createElement("div"), "formContainer");
       _methodForm = methodFormContainer;
 
-      wrap.append(heading, body, method, methodFormContainer);
+      wrap.append(headerContainer, body, method, methodFormContainer);
       container.appendChild(wrap);
 
       //Event: Method selected
